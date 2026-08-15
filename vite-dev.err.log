@@ -1,0 +1,6 @@
+The request url "E:\dev\4-Vue_Javascript\PassCafe\.env.example" is outside of Vite serving allow list.
+
+- E:/dev/4-Vue_Javascript/PassCafe
+
+Refer to docs https://vite.dev/config/server-options.html#server-fs-allow for configurations and more details.
+

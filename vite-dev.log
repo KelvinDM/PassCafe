@@ -1,14 +1,21 @@
 
 > passcafe-vue@1.0.0 dev
-> vite --host 0.0.0.0 --port 5173
+> vite --host 0.0.0.0
 
 
-  [32m[1mVITE[22m v6.4.3[39m  [2mready in [0m[1m718[22m[2m[0m ms[22m
+  [32m[1mVITE[22m v6.4.3[39m  [2mready in [0m[1m345[22m[2m[0m ms[22m
 
   [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
-  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.17.63.193:[1m5173[22m/[39m
-  [32m➜[39m  [1mNetwork[22m: [36mhttp://10.4.0.92:[1m5173[22m/[39m
-  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.56.1:[1m5173[22m/[39m
-[2m17:30:54[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
-[2m17:30:54[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
-[2m17:30:54[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.vue[22m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.19.0.126:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.100.112:[1m5173[22m/[39m
+[2m23:10:59[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.vue[22m
+[2m23:11:13[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/style.css[22m
+[2m23:14:17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.vue[22m
+[2m23:14:24[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/style.css[22m
+[2m23:15:23[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.vue[22m
+[2m23:15:29[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/style.css[22m
+[2m23:15:34[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ new dependencies optimized: [33mvite, @vitejs/plugin-vue[32m[39m
+[2m23:15:34[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ optimized dependencies changed. reloading[39m
+[2m23:17:10[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.vue[22m
+[2m23:17:14[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.vue[22m
+[2m23:17:18[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2mindex.html[22m
