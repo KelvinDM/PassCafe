@@ -1,6 +1,4 @@
 <script setup>
-import { Icon, addCollection } from '@iconify/vue'
-import pixelarticons from '@iconify-json/pixelarticons/icons.json'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   deleteMember as deleteFirestoreMember,
@@ -11,8 +9,6 @@ import {
   saveMembers,
   saveSettings
 } from './firebase'
-
-addCollection(pixelarticons)
 
 const DEFAULT_SETTINGS = {
   month: 'AGOSTO / 2026',
@@ -40,10 +36,10 @@ const FUNNY_EXCUSES = [
 ]
 
 const FUNNY_BANNERS = [
-  'Dica do Dia: Café sem pagamento causa sonolência extrema no relatório de sexta-feira!',
-  'Alerta RH: A garrafa térmica detectou 2 invasores não quitados hoje!',
-  'Sabia que? Cada xícara paga aumenta sua produtividade em 400% e evita reuniões desnecessárias.',
-  'Cuidado! O café de quem não paga fica com sabor de chá de boldo requentado.'
+  '☕ Dica do Dia: Café sem pagamento causa sonolência extrema no relatório de sexta-feira!',
+  '📢 Alerta RH: A garrafa térmica detectou 2 invasores não quitados hoje!',
+  '💡 Sabia que? Cada xícara paga aumenta sua produtividade em 400% e evita reuniões desnecessárias.',
+  '⚠️ Cuidado! O café de quem não paga fica com sabor de chá de boldo requentado.'
 ]
 
 const settings = reactive({ ...DEFAULT_SETTINGS })
@@ -148,7 +144,7 @@ async function handleUserPayment() {
   }
 
   await persistMember(member)
-  showToast(`Pagamento registrado com sucesso para ${name}!`, 'success')
+  showToast(`☕ Pagamento registrado com sucesso para ${name}!`, 'success')
   playSuccessSound()
   userPayment.name = ''
   userPayment.dept = ''
@@ -163,7 +159,7 @@ async function markAsPaidFromList(id) {
   member.status = 'PAID'
   member.paidAt = nowFormatted()
   await persistMember(member)
-  showToast(`Pagamento confirmado para ${member.name}!`, 'success')
+  showToast(`☕ Pagamento confirmado para ${member.name}!`, 'success')
   playSuccessSound()
 }
 
@@ -270,6 +266,21 @@ function triggerHornSound() {
   playHornSound()
 }
 
+async function downloadProjectZip() {
+  if (!window.JSZip || !window.saveAs) {
+    showToast('Bibliotecas de ZIP ainda não carregaram. Tente novamente.', 'error')
+    return
+  }
+
+  const zip = new window.JSZip()
+  const files = ['index.html', 'package.json', 'vite.config.js', '.env.example', 'src/main.js', 'src/firebase.js', 'src/style.css', 'src/App.vue']
+  await Promise.all(files.map(async (file) => {
+    const response = await fetch(`/${file}`)
+    if (response.ok) zip.file(file, await response.text())
+  }))
+  window.saveAs(await zip.generateAsync({ type: 'blob' }), 'passcafe-vue-firestore.zip')
+}
+
 function printReceipt() {
   window.print()
 }
@@ -324,7 +335,7 @@ function playHornSound() { tone(180, 0.25, 'square') }
             <span class="absolute -top-3 left-2 text-xs steam-line text-crema font-bold">~</span>
             <span class="absolute -top-4 left-5 text-sm steam-line steam-2 text-crema font-bold">~</span>
             <span class="absolute -top-3 right-2 text-xs steam-line steam-3 text-crema font-bold">~</span>
-            <Icon icon="pixelarticons:coffee" class="text-3xl text-espresso" />
+            <i class="fa-solid fa-mug-hot text-2xl text-espresso"></i>
           </div>
           <div>
             <h1 class="text-2xl md:text-3xl font-black tracking-wide text-foam flex items-center gap-2">
@@ -336,19 +347,22 @@ function playHornSound() { tone(180, 0.25, 'square') }
 
         <nav class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
           <button v-for="tab in [
-            ['pay', 'pixelarticons:wallet', 'Pagar Cota'],
-            ['list', 'pixelarticons:users', 'Lista dos Cafeinados'],
-            ['receipts', 'pixelarticons:receipt', 'Segundas Vias'],
-            ['admin', 'pixelarticons:shield', 'Painel Admin']
+            ['pay', 'fa-qrcode', 'Pagar Cota'],
+            ['list', 'fa-users', 'Lista dos Cafeinados'],
+            ['receipts', 'fa-receipt', 'Segundas Vias'],
+            ['admin', 'fa-user-shield', 'Painel Admin']
           ]" :key="tab[0]" @click="switchTab(tab[0])" class="nav-btn font-bold px-4 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-2 text-sm whitespace-nowrap" :class="activeTab === tab[0] ? 'bg-caramel text-espresso' : tab[0] === 'admin' ? 'bg-roast text-latte' : 'bg-crema text-espresso'">
-            <span class="nav-icon"><Icon :icon="tab[1]" /></span> {{ tab[2] }}
+            <i class="fa-solid text-base" :class="tab[1]"></i> {{ tab[2] }}
+          </button>
+          <button @click="downloadProjectZip" class="bg-mint hover:bg-emerald-600 text-foam font-black px-3 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-2 text-sm whitespace-nowrap animate-pulse">
+            <i class="fa-solid fa-file-zipper text-base"></i> Baixar ZIP
           </button>
         </nav>
       </div>
     </header>
 
     <div class="bg-caramel comic-border-lg border-t-0 border-x-0 py-1.5 px-4 text-center font-bold text-xs sm:text-sm text-espresso overflow-hidden shadow-sm">
-      <span class="inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:warning-box" class="text-lg" /> {{ funnyBanner }}</span>
+      <span>{{ funnyBanner }}</span>
     </div>
 
     <main class="max-w-5xl mx-auto px-4 py-6 flex-1 w-full">
@@ -357,7 +371,7 @@ function playHornSound() { tone(180, 0.25, 'square') }
       <section v-show="!loading && activeTab === 'pay'" class="tab-content space-y-6">
         <div class="bg-crema rounded-3xl p-6 sm:p-8 comic-border-lg shadow-comic-xl grid grid-cols-1 md:grid-cols-12 gap-8 items-start relative overflow-hidden">
           <div class="absolute -right-10 -bottom-10 text-mocha/10 text-9xl pointer-events-none select-none">
-            <Icon icon="pixelarticons:coffee-alt" />
+            <i class="fa-solid fa-coffee"></i>
           </div>
 
           <div class="md:col-span-5 bg-foam p-5 rounded-2xl comic-border shadow-comic text-center flex flex-col items-center">
@@ -383,7 +397,7 @@ function playHornSound() { tone(180, 0.25, 'square') }
               <div class="flex items-center gap-1">
                 <input type="text" readonly :value="settings.pixKey" class="w-full bg-latte/50 text-espresso text-xs font-mono font-bold p-2.5 rounded-lg comic-border focus:outline-none select-all">
                 <button @click="copyPixKey" title="Copiar Chave Pix" class="bg-caramel hover:bg-amber-600 text-espresso p-2.5 rounded-lg comic-border shadow-comic hover:shadow-comic-hover active:translate-x-0.5 active:translate-y-0.5 transition-all">
-                  <Icon icon="pixelarticons:copy" class="text-lg" />
+                  <i class="fa-solid fa-copy text-sm"></i>
                 </button>
               </div>
               <p class="text-[10px] text-mocha/80 text-left mt-1 font-medium">Titular: <span class="font-bold">{{ settings.pixOwner }}</span></p>
@@ -403,23 +417,23 @@ function playHornSound() { tone(180, 0.25, 'square') }
                 <div>
                   <label class="block text-xs font-bold text-espresso uppercase mb-1">Seu Nome / Apelido da Firma *</label>
                   <div class="relative">
-                    <span class="absolute left-3 top-3 text-mocha/60"><Icon icon="pixelarticons:user" class="text-lg" /></span>
+                    <span class="absolute left-3 top-3 text-mocha/60"><i class="fa-solid fa-user"></i></span>
                     <input v-model="userPayment.name" type="text" required placeholder="Ex: Carlinhos do T.I. / Ana do Vendas" class="w-full bg-foam text-espresso font-bold pl-10 pr-4 py-3 rounded-xl comic-border focus:ring-4 focus:ring-caramel/30 focus:outline-none transition-all placeholder:font-normal placeholder:text-mocha/40">
                   </div>
                 </div>
                 <div>
                   <label class="block text-xs font-bold text-espresso uppercase mb-1">Setor / Departamento (Opcional)</label>
                   <div class="relative">
-                    <span class="absolute left-3 top-3 text-mocha/60"><Icon icon="pixelarticons:briefcase-check" class="text-lg" /></span>
+                    <span class="absolute left-3 top-3 text-mocha/60"><i class="fa-solid fa-building"></i></span>
                     <input v-model="userPayment.dept" type="text" placeholder="Ex: T.I., Marketing, Financeiro, RH" class="w-full bg-foam text-espresso font-bold pl-10 pr-4 py-3 rounded-xl comic-border focus:ring-4 focus:ring-caramel/30 focus:outline-none transition-all placeholder:font-normal placeholder:text-mocha/40">
                   </div>
                 </div>
                 <div class="bg-latte/60 p-3.5 rounded-xl comic-border text-xs text-mocha flex items-start gap-2.5">
-                  <Icon icon="pixelarticons:info-box" class="text-caramel text-lg mt-0.5 shrink-0" />
+                  <i class="fa-solid fa-circle-info text-caramel text-base mt-0.5"></i>
                   <p>Ao clicar abaixo, você declara formalmente que transferiu a cota e tem total consciência de que café requentado após as 16h é de sua inteira responsabilidade.</p>
                 </div>
                 <button type="submit" class="w-full bg-mint hover:bg-emerald-600 text-foam font-black text-lg py-4 px-6 rounded-2xl comic-border shadow-comic hover:shadow-comic-hover active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-3">
-                  <Icon icon="pixelarticons:check-double" class="text-2xl" /> CONFIRMAR QUE PAGUEI O CAFÉ!
+                  <i class="fa-solid fa-check-double text-xl"></i> CONFIRMAR QUE PAGUEI O CAFÉ!
                 </button>
               </form>
             </div>
@@ -437,21 +451,15 @@ function playHornSound() { tone(180, 0.25, 'square') }
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="bg-foam p-4 rounded-2xl comic-border shadow-comic flex items-start gap-3">
-            <div class="feature-icon feature-icon--coffee">
-              <Icon icon="pixelarticons:coffee-alt" class="feature-icon__main" />
-            </div>
+            <div class="bg-caramel/20 p-3 rounded-xl text-caramel text-xl comic-border">☕</div>
             <div><h4 class="font-bold text-sm text-espresso">Regra nº 1</h4><p class="text-xs text-mocha font-medium">Fez o último gole? Coloque mais água e pó ou corra para se esconder.</p></div>
           </div>
           <div class="bg-foam p-4 rounded-2xl comic-border shadow-comic flex items-start gap-3">
-            <div class="feature-icon feature-icon--debt">
-              <Icon icon="pixelarticons:wallet" class="feature-icon__main" />
-            </div>
+            <div class="bg-chili/20 p-3 rounded-xl text-chili text-xl comic-border">🌵</div>
             <div><h4 class="font-bold text-sm text-espresso">Caloteiros</h4><p class="text-xs text-mocha font-medium">Quem consome sem pagar aciona a maldição da garrafa morna e sem açúcar.</p></div>
           </div>
           <div class="bg-foam p-4 rounded-2xl comic-border shadow-comic flex items-start gap-3">
-            <div class="feature-icon feature-icon--proof">
-              <Icon icon="pixelarticons:receipt" class="feature-icon__main" />
-            </div>
+            <div class="bg-mint/20 p-3 rounded-xl text-mint text-xl comic-border">📜</div>
             <div><h4 class="font-bold text-sm text-espresso">Comprovação</h4><p class="text-xs text-mocha font-medium">Emita sua segunda via a qualquer hora na aba "Segundas Vias" para esfregar no RH.</p></div>
           </div>
         </div>
@@ -461,29 +469,29 @@ function playHornSound() { tone(180, 0.25, 'square') }
         <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
-              <h2 class="text-2xl font-black text-espresso flex items-center gap-2"><Icon icon="pixelarticons:checklist" class="text-caramel text-3xl" /> Lista Oficial dos Cafeinados</h2>
+              <h2 class="text-2xl font-black text-espresso flex items-center gap-2"><i class="fa-solid fa-list-check text-caramel"></i> Lista Oficial dos Cafeinados</h2>
               <p class="text-xs text-mocha font-medium">Mês de <span class="font-bold">{{ settings.month }}</span> • Todo mês a lista se renova!</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <div class="relative flex-1 sm:w-64">
                 <input v-model="searchMember" type="text" placeholder="Buscar colega..." class="w-full bg-foam text-xs font-bold pl-8 pr-3 py-2 rounded-xl comic-border focus:outline-none">
-                <Icon icon="pixelarticons:search" class="absolute left-2.5 top-2.5 text-sm text-mocha/50" />
+                <i class="fa-solid fa-search absolute left-2.5 top-2.5 text-xs text-mocha/50"></i>
               </div>
               <select v-model="filterStatus" class="bg-foam text-xs font-bold px-3 py-2 rounded-xl comic-border focus:outline-none cursor-pointer">
                 <option value="ALL">Todos os Colegas</option>
-                <option value="PAID">Quitados (Paga-Lanches)</option>
-                <option value="UNPAID">Desidratados (Pendentes)</option>
+                <option value="PAID">☕ Quitados (Paga-Lanches)</option>
+                <option value="UNPAID">🌵 Desidratados (Pendentes)</option>
               </select>
               <button @click="joinModalOpen = true" class="bg-caramel hover:bg-amber-600 text-espresso font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-1">
-                <Icon icon="pixelarticons:plus" class="text-base" /> Entrar Este Mês
+                <i class="fa-solid fa-plus"></i> Entrar Este Mês
               </button>
             </div>
           </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             <div class="bg-foam p-3 rounded-xl comic-border text-center"><span class="text-[10px] font-bold text-mocha uppercase block">Total Inscritos</span><span class="text-xl font-black text-espresso font-mono">{{ members.length }}</span></div>
-            <div class="bg-mint/20 p-3 rounded-xl comic-border text-center"><span class="text-[10px] font-bold text-emerald-800 uppercase flex items-center justify-center gap-1"><Icon icon="pixelarticons:coffee" /> Quitados</span><span class="text-xl font-black text-emerald-700 font-mono">{{ paidMembers.length }}</span></div>
-            <div class="bg-chili/20 p-3 rounded-xl comic-border text-center"><span class="text-[10px] font-bold text-red-800 uppercase flex items-center justify-center gap-1"><Icon icon="pixelarticons:robot-face-sad" /> Pendentes</span><span class="text-xl font-black text-red-700 font-mono">{{ unpaidCount }}</span></div>
+            <div class="bg-mint/20 p-3 rounded-xl comic-border text-center"><span class="text-[10px] font-bold text-emerald-800 uppercase block">Quitados ☕</span><span class="text-xl font-black text-emerald-700 font-mono">{{ paidMembers.length }}</span></div>
+            <div class="bg-chili/20 p-3 rounded-xl comic-border text-center"><span class="text-[10px] font-bold text-red-800 uppercase block">Pendentes 🌵</span><span class="text-xl font-black text-red-700 font-mono">{{ unpaidCount }}</span></div>
             <div class="bg-caramel/20 p-3 rounded-xl comic-border text-center"><span class="text-[10px] font-bold text-amber-900 uppercase block">Arrecadado</span><span class="text-xl font-black text-amber-900 font-mono">{{ formatMoney(totalRaised) }}</span></div>
           </div>
 
@@ -495,19 +503,19 @@ function playHornSound() { tone(180, 0.25, 'square') }
                 </tr>
               </thead>
               <tbody class="divide-y-2 divide-espresso/10 text-sm font-medium">
-                <tr v-if="filteredMembers.length === 0"><td colspan="5" class="p-6 text-center text-mocha font-bold italic">Nenhum participante encontrado... O café está solitário!</td></tr>
+                <tr v-if="filteredMembers.length === 0"><td colspan="5" class="p-6 text-center text-mocha font-bold italic">Nenhum participante encontrado... O café está solitário! ☕</td></tr>
                 <tr v-for="member in filteredMembers" :key="member.id" class="hover:bg-crema/50 transition-colors">
                   <td class="p-3 font-bold text-espresso flex items-center gap-2">
-                    <span class="w-8 h-8 rounded-full comic-border flex items-center justify-center text-base" :class="member.status === 'PAID' ? 'bg-mint/20 text-mint' : 'bg-chili/20 text-chili'"><Icon :icon="member.status === 'PAID' ? 'pixelarticons:coffee' : 'pixelarticons:robot-face-sad'" /></span>{{ member.name }}
+                    <span class="w-8 h-8 rounded-full comic-border flex items-center justify-center text-xs" :class="member.status === 'PAID' ? 'bg-mint/20 text-mint' : 'bg-chili/20 text-chili'">{{ member.status === 'PAID' ? '☕' : '🌵' }}</span>{{ member.name }}
                   </td>
                   <td class="p-3 text-xs font-semibold text-mocha">{{ member.dept || 'Geral' }}</td>
                   <td class="p-3 text-center"><span class="inline-block text-xs font-black px-3 py-1 rounded-full comic-border" :class="member.status === 'PAID' ? 'bg-mint text-foam' : 'bg-chili text-foam'">{{ member.status === 'PAID' ? 'CAFEINADO (QUITADO)' : 'DESIDRATADO (PENDENTE)' }}</span></td>
                   <td class="p-3 text-center text-xs font-mono font-bold text-espresso">{{ member.paidAt || '--/--/----' }}</td>
                   <td class="p-3 text-right">
                     <div class="flex items-center justify-end gap-1">
-                      <button v-if="member.status === 'PAID'" @click="viewUserReceipt(member.name)" title="Ver Segunda Via" class="bg-caramel hover:bg-amber-600 text-espresso text-xs font-bold p-1.5 px-2.5 rounded-lg comic-border shadow-comic inline-flex items-center gap-1"><Icon icon="pixelarticons:receipt" /> Recibo</button>
-                      <button v-else @click="markAsPaidFromList(member.id)" title="Marcar como Pago" class="bg-mint hover:bg-emerald-600 text-foam text-xs font-bold p-1.5 px-2.5 rounded-lg comic-border shadow-comic inline-flex items-center gap-1"><Icon icon="pixelarticons:check" /> Paguei</button>
-                      <button @click="removeMember(member.id)" title="Sair da vaquinha neste mês" class="bg-roast hover:bg-espresso text-latte text-xs font-bold p-1.5 px-2 rounded-lg comic-border shadow-comic"><Icon icon="pixelarticons:user-minus" /></button>
+                      <button v-if="member.status === 'PAID'" @click="viewUserReceipt(member.name)" title="Ver Segunda Via" class="bg-caramel hover:bg-amber-600 text-espresso text-xs font-bold p-1.5 px-2.5 rounded-lg comic-border shadow-comic"><i class="fa-solid fa-receipt"></i> Recibo</button>
+                      <button v-else @click="markAsPaidFromList(member.id)" title="Marcar como Pago" class="bg-mint hover:bg-emerald-600 text-foam text-xs font-bold p-1.5 px-2.5 rounded-lg comic-border shadow-comic"><i class="fa-solid fa-check"></i> Paguei</button>
+                      <button @click="removeMember(member.id)" title="Sair da vaquinha neste mês" class="bg-roast hover:bg-espresso text-latte text-xs font-bold p-1.5 px-2 rounded-lg comic-border shadow-comic"><i class="fa-solid fa-user-minus"></i></button>
                     </div>
                   </td>
                 </tr>
@@ -516,8 +524,8 @@ function playHornSound() { tone(180, 0.25, 'square') }
           </div>
 
           <div class="mt-6 bg-latte/40 p-4 rounded-2xl comic-border flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-3"><div class="text-3xl text-mocha"><Icon icon="pixelarticons:mood-sad" /></div><div><h4 class="text-xs font-bold uppercase text-espresso">Gerador Automático de Desculpas de Caloteiro</h4><p class="text-xs text-mocha italic">{{ funnyExcuse }}</p></div></div>
-            <button @click="generateExcuse" class="bg-mocha hover:bg-espresso text-foam font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic whitespace-nowrap inline-flex items-center gap-1"><Icon icon="pixelarticons:dice" /> Gerar Outra Desculpa</button>
+            <div class="flex items-center gap-3"><div class="text-3xl">🎭</div><div><h4 class="text-xs font-bold uppercase text-espresso">Gerador Automático de Desculpas de Caloteiro</h4><p class="text-xs text-mocha italic">{{ funnyExcuse }}</p></div></div>
+            <button @click="generateExcuse" class="bg-mocha hover:bg-espresso text-foam font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic whitespace-nowrap"><i class="fa-solid fa-dice"></i> Gerar Outra Desculpa</button>
           </div>
         </div>
       </section>
@@ -525,21 +533,21 @@ function playHornSound() { tone(180, 0.25, 'square') }
       <section v-show="!loading && activeTab === 'receipts'" class="tab-content space-y-6">
         <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
           <div class="mb-6">
-            <h2 class="text-2xl font-black text-espresso flex items-center gap-2"><Icon icon="pixelarticons:card-id" class="text-caramel text-3xl" /> Emissor & Consultor de Licença de Cafeína</h2>
+            <h2 class="text-2xl font-black text-espresso flex items-center gap-2"><i class="fa-solid fa-id-card text-caramel"></i> Emissor & Consultor de Licença de Cafeína</h2>
             <p class="text-xs text-mocha font-medium">Esfregue na cara de quem duvidar que você contribuiu para o café do mês!</p>
           </div>
           <div class="bg-foam p-5 rounded-2xl comic-border shadow-comic mb-6 max-w-xl">
             <label class="block text-xs font-bold text-espresso uppercase mb-2">Digite o Nome do Colega Quitado:</label>
             <div class="flex gap-2">
               <input v-model="receiptSearch" type="text" placeholder="Ex: Carlinhos do T.I." class="w-full bg-crema text-espresso font-bold px-4 py-2.5 rounded-xl comic-border focus:outline-none">
-              <button @click="searchAndShowReceipt" class="bg-caramel hover:bg-amber-600 text-espresso font-black text-xs px-5 py-2.5 rounded-xl comic-border shadow-comic whitespace-nowrap inline-flex items-center gap-1"><Icon icon="pixelarticons:search" /> Gerar Recibo</button>
+              <button @click="searchAndShowReceipt" class="bg-caramel hover:bg-amber-600 text-espresso font-black text-xs px-5 py-2.5 rounded-xl comic-border shadow-comic whitespace-nowrap"><i class="fa-solid fa-magnifying-glass"></i> Gerar Recibo</button>
             </div>
           </div>
           <div v-if="selectedReceipt">
             <div id="printable-receipt" class="bg-foam p-6 sm:p-8 rounded-3xl comic-border-lg shadow-comic-xl max-w-2xl mx-auto relative overflow-hidden text-espresso">
-              <div class="absolute top-6 right-6 font-mono font-black text-xl px-4 py-2 rounded-xl uppercase tracking-widest stamp-approved pointer-events-none select-none z-10 inline-flex items-center gap-2">QUITADO <Icon icon="pixelarticons:coffee" /></div>
+              <div class="absolute top-6 right-6 font-mono font-black text-xl px-4 py-2 rounded-xl uppercase tracking-widest stamp-approved pointer-events-none select-none z-10">QUITADO ☕</div>
               <div class="border-b-4 border-espresso pb-4 mb-4 flex items-center gap-3">
-                <div class="w-12 h-12 bg-caramel rounded-xl comic-border flex items-center justify-center text-espresso text-3xl"><Icon icon="pixelarticons:coffee" /></div>
+                <div class="w-12 h-12 bg-caramel rounded-xl comic-border flex items-center justify-center text-espresso text-2xl"><i class="fa-solid fa-mug-hot"></i></div>
                 <div><h3 class="text-xl font-black text-espresso tracking-tight">LICENÇA OFICIAL DE CONSUMO DE CAFÉ</h3><p class="text-[11px] font-mono font-bold text-mocha">REPUBLICA CAFEEIRA DA FIRMA S.A. • EDITAL MENSAL</p></div>
               </div>
               <div class="space-y-4 font-mono text-xs sm:text-sm my-6">
@@ -552,7 +560,7 @@ function playHornSound() { tone(180, 0.25, 'square') }
               </div>
               <div class="bg-latte/50 p-3 rounded-xl comic-border text-[11px] font-sans font-medium text-mocha mb-6"><strong>PARECER TÉCNICO:</strong> O portador deste documento possui passe livre para até 4 xícaras diárias de café puro ou com leite. Proibido colocar açúcar no bule coletivo. Válido até o último dia do mês corrente.</div>
               <div class="text-center pt-2 border-t-2 border-dashed border-espresso/30"><div class="font-mono text-2xl font-black tracking-widest text-espresso mb-1 select-none">||||| | |||| ||| |||||| | ||||| ||| |||</div><p class="text-[9px] font-mono text-mocha uppercase">AUTENTICAÇÃO MECÂNICA DA CAFETEIRA DA FIRMA</p></div>
-              <div class="mt-6 flex justify-end gap-2 print:hidden"><button @click="printReceipt" class="bg-mint hover:bg-emerald-600 text-foam font-bold text-xs px-4 py-2.5 rounded-xl comic-border shadow-comic flex items-center gap-2"><Icon icon="pixelarticons:printer" /> Imprimir / Salvar PDF</button></div>
+              <div class="mt-6 flex justify-end gap-2 print:hidden"><button @click="printReceipt" class="bg-mint hover:bg-emerald-600 text-foam font-bold text-xs px-4 py-2.5 rounded-xl comic-border shadow-comic flex items-center gap-2"><i class="fa-solid fa-print"></i> Imprimir / Salvar PDF</button></div>
             </div>
           </div>
         </div>
@@ -560,39 +568,39 @@ function playHornSound() { tone(180, 0.25, 'square') }
 
       <section v-show="!loading && activeTab === 'admin'" class="tab-content space-y-6">
         <div v-if="!adminUnlocked" class="bg-crema p-8 rounded-3xl comic-border-lg shadow-comic-xl max-w-md mx-auto text-center space-y-4">
-          <div class="w-16 h-16 bg-roast text-caramel rounded-2xl comic-border shadow-comic flex items-center justify-center mx-auto text-4xl"><Icon icon="pixelarticons:lock" /></div>
+          <div class="w-16 h-16 bg-roast text-caramel rounded-2xl comic-border shadow-comic flex items-center justify-center mx-auto text-3xl"><i class="fa-solid fa-lock"></i></div>
           <h2 class="text-2xl font-black text-espresso">Acesso Restrito ao Mestre do Café</h2>
           <p class="text-xs text-mocha font-medium">Somente quem limpa o filtro e compra o pão pode alterar as configurações do Pix!</p>
           <form @submit.prevent="unlockAdmin" class="space-y-3 pt-2">
             <input v-model="adminPass" type="password" placeholder="Senha secreta (Padrão: cafe123)" required class="w-full bg-foam text-espresso text-center font-mono font-bold py-3 rounded-xl comic-border focus:outline-none">
-            <button type="submit" class="w-full bg-caramel hover:bg-amber-600 text-espresso font-black py-3 rounded-xl comic-border shadow-comic hover:shadow-comic-hover inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:unlock" class="text-xl" /> ENTRAR NO PAINEL</button>
+            <button type="submit" class="w-full bg-caramel hover:bg-amber-600 text-espresso font-black py-3 rounded-xl comic-border shadow-comic hover:shadow-comic-hover">🔓 ENTRAR NO PAINEL</button>
           </form>
           <p class="text-[10px] text-mocha/70 italic">Dica: A senha padrão de teste é <code class="font-bold">cafe123</code></p>
         </div>
 
         <div v-else class="space-y-6">
           <div class="bg-roast text-foam p-6 rounded-3xl comic-border-lg shadow-comic-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div><span class="bg-caramel text-espresso text-[10px] font-black px-2.5 py-0.5 rounded-full comic-border uppercase">Modo Mestre Ativo</span><h2 class="text-2xl font-black text-foam mt-1 flex items-center gap-2">Painel do Mestre do Café <Icon icon="pixelarticons:crown" class="text-caramel" /></h2><p class="text-xs text-latte">Altere a chave Pix, valor mensal, aprove pagamentos ou reinicie o mês.</p></div>
-            <button @click="lockAdmin" class="bg-chili hover:bg-red-600 text-foam font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic inline-flex items-center gap-1"><Icon icon="pixelarticons:lock" /> Sair do Admin</button>
+            <div><span class="bg-caramel text-espresso text-[10px] font-black px-2.5 py-0.5 rounded-full comic-border uppercase">Modo Mestre Ativo</span><h2 class="text-2xl font-black text-foam mt-1">Painel do Mestre do Café 👑</h2><p class="text-xs text-latte">Altere a chave Pix, valor mensal, aprove pagamentos ou reinicie o mês.</p></div>
+            <button @click="lockAdmin" class="bg-chili hover:bg-red-600 text-foam font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic"><i class="fa-solid fa-lock"></i> Sair do Admin</button>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl space-y-4">
-              <h3 class="text-lg font-black text-espresso border-b-2 border-espresso/20 pb-2 flex items-center gap-2"><Icon icon="pixelarticons:settings-cog" class="text-caramel text-2xl" /> Parâmetros da Cota</h3>
+              <h3 class="text-lg font-black text-espresso border-b-2 border-espresso/20 pb-2 flex items-center gap-2"><i class="fa-solid fa-gear text-caramel"></i> Parâmetros da Cota</h3>
               <form @submit.prevent="saveAdminSettings" class="space-y-4">
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Mês / Ano de Referência</label><input v-model="adminForm.month" type="text" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm"></div>
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Valor da Mensalidade (R$)</label><input v-model="adminForm.monthlyFee" type="number" step="0.5" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm font-mono"></div>
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Tipo da Chave Pix</label><select v-model="adminForm.pixType" class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm"><option value="E-mail">E-mail</option><option value="CPF / CNPJ">CPF / CNPJ</option><option value="Celular">Celular</option><option value="Chave Aleatória">Chave Aleatória</option></select></div>
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Chave Pix para Recebimento</label><input v-model="adminForm.pixKey" type="text" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm font-mono"></div>
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Nome do Titular da Conta</label><input v-model="adminForm.pixOwner" type="text" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm"></div>
-                <button type="submit" class="w-full bg-mint hover:bg-emerald-600 text-foam font-black text-sm py-3 rounded-xl comic-border shadow-comic inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:checkbox-on" class="text-xl" /> SALVAR ALTERAÇÕES</button>
+                <button type="submit" class="w-full bg-mint hover:bg-emerald-600 text-foam font-black text-sm py-3 rounded-xl comic-border shadow-comic"><i class="fa-solid fa-floppy-disk"></i> SALVAR ALTERAÇÕES</button>
               </form>
             </div>
             <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl space-y-4 flex flex-col justify-between">
               <div>
-                <h3 class="text-lg font-black text-espresso border-b-2 border-espresso/20 pb-2 flex items-center gap-2"><Icon icon="pixelarticons:sliders" class="text-caramel text-2xl" /> Ações Rápidas do Gestor</h3>
+                <h3 class="text-lg font-black text-espresso border-b-2 border-espresso/20 pb-2 flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-caramel"></i> Ações Rápidas do Gestor</h3>
                 <div class="space-y-3 mt-4">
-                  <div class="bg-foam p-3 rounded-xl comic-border"><h4 class="text-xs font-bold text-espresso flex items-center gap-1"><Icon icon="pixelarticons:volume-vibrate" class="text-chili text-lg" /> Cobrador Automático</h4><p class="text-[11px] text-mocha mb-2">Dispara um aviso sonoro engraçado e destaca quem ainda não pagou.</p><button @click="triggerHornSound" class="w-full bg-caramel hover:bg-amber-600 text-espresso font-bold text-xs py-2 rounded-lg comic-border shadow-comic inline-flex items-center justify-center gap-1"><Icon icon="pixelarticons:volume-3" /> TOCAR SIRENE DA COBRANÇA</button></div>
-                  <div class="bg-foam p-3 rounded-xl comic-border"><h4 class="text-xs font-bold text-espresso flex items-center gap-1"><Icon icon="pixelarticons:calendar-alert" class="text-caramel text-lg" /> Novo Mês (Zerar Pagamentos)</h4><p class="text-[11px] text-mocha mb-2">Mantém a lista de pessoas, mas marca todos como "Pendente" para o próximo mês.</p><button @click="resetMonthlyPayments" class="w-full bg-roast hover:bg-espresso text-latte font-bold text-xs py-2 rounded-lg comic-border shadow-comic inline-flex items-center justify-center gap-1"><Icon icon="pixelarticons:arrow-up-wide-narrow" /> REINICIAR PAGAMENTOS DO MÊS</button></div>
+                  <div class="bg-foam p-3 rounded-xl comic-border"><h4 class="text-xs font-bold text-espresso">🚨 Cobrador Automático</h4><p class="text-[11px] text-mocha mb-2">Dispara um aviso sonoro engraçado e destaca quem ainda não pagou.</p><button @click="triggerHornSound" class="w-full bg-caramel hover:bg-amber-600 text-espresso font-bold text-xs py-2 rounded-lg comic-border shadow-comic"><i class="fa-solid fa-bullhorn"></i> TOCAR SIRENE DA COBRANÇA</button></div>
+                  <div class="bg-foam p-3 rounded-xl comic-border"><h4 class="text-xs font-bold text-espresso">🧹 Novo Mês (Zerar Pagamentos)</h4><p class="text-[11px] text-mocha mb-2">Mantém a lista de pessoas, mas marca todos como "Pendente" para o próximo mês.</p><button @click="resetMonthlyPayments" class="w-full bg-roast hover:bg-espresso text-latte font-bold text-xs py-2 rounded-lg comic-border shadow-comic"><i class="fa-solid fa-rotate-left"></i> REINICIAR PAGAMENTOS DO MÊS</button></div>
                 </div>
               </div>
               <div class="bg-foam p-4 rounded-2xl comic-border mt-4">
@@ -600,7 +608,7 @@ function playHornSound() { tone(180, 0.25, 'square') }
                 <form @submit.prevent="addMemberFromAdmin" class="space-y-2">
                   <input v-model="adminNewMember.name" type="text" placeholder="Nome do Colega" required class="w-full bg-crema text-xs font-bold p-2 rounded-lg comic-border">
                   <input v-model="adminNewMember.dept" type="text" placeholder="Setor (ex: RH)" class="w-full bg-crema text-xs font-bold p-2 rounded-lg comic-border">
-                  <button type="submit" class="w-full bg-mint text-foam font-bold text-xs py-2 rounded-lg comic-border shadow-comic inline-flex items-center justify-center gap-1"><Icon icon="pixelarticons:user-plus" /> Inserir na Lista</button>
+                  <button type="submit" class="w-full bg-mint text-foam font-bold text-xs py-2 rounded-lg comic-border shadow-comic"><i class="fa-solid fa-plus"></i> Inserir na Lista</button>
                 </form>
               </div>
             </div>
@@ -611,20 +619,20 @@ function playHornSound() { tone(180, 0.25, 'square') }
 
     <div v-if="joinModalOpen" class="fixed inset-0 bg-espresso/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div class="bg-crema p-6 sm:p-8 rounded-3xl comic-border-lg shadow-comic-xl max-w-md w-full space-y-4 relative">
-        <button @click="joinModalOpen = false" class="absolute top-4 right-4 bg-chili text-foam rounded-xl w-8 h-8 comic-border flex items-center justify-center font-bold"><Icon icon="pixelarticons:close" /></button>
-        <h3 class="text-2xl font-black text-espresso flex items-center gap-2">Entrar na Vaquinha <Icon icon="pixelarticons:coffee" class="text-caramel" /></h3>
+        <button @click="joinModalOpen = false" class="absolute top-4 right-4 bg-chili text-foam rounded-xl w-8 h-8 comic-border flex items-center justify-center font-bold">✕</button>
+        <h3 class="text-2xl font-black text-espresso">Entrar na Vaquinha ☕</h3>
         <p class="text-xs text-mocha font-medium">Você pode entrar e sair nos meses que quiser sem ressentimentos!</p>
         <form @submit.prevent="handleJoinSubmit" class="space-y-3 pt-2">
           <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Seu Nome *</label><input v-model="joinForm.name" type="text" required placeholder="Ex: Roberto do Almoxarifado" class="w-full bg-foam text-espresso font-bold p-3 rounded-xl comic-border focus:outline-none"></div>
           <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Seu Setor</label><input v-model="joinForm.dept" type="text" placeholder="Ex: Compras" class="w-full bg-foam text-espresso font-bold p-3 rounded-xl comic-border focus:outline-none"></div>
-          <button type="submit" class="w-full bg-mint text-foam font-black text-base py-3 rounded-xl comic-border shadow-comic inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:user-plus" class="text-xl" /> CONFIRMAR MINHA ENTRADA</button>
+          <button type="submit" class="w-full bg-mint text-foam font-black text-base py-3 rounded-xl comic-border shadow-comic"><i class="fa-solid fa-user-plus"></i> CONFIRMAR MINHA ENTRADA</button>
         </form>
       </div>
     </div>
 
     <footer class="bg-roast text-latte comic-border-lg border-b-0 border-x-0 py-6 px-4 mt-auto">
       <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left text-xs">
-        <div class="flex items-center gap-3"><span class="text-3xl text-caramel"><Icon icon="pixelarticons:coffee" /></span><div><p class="font-bold text-foam text-sm">Café Pass - O Guardião do Coador</p><p class="text-latte/70">Feito para acabar com as briguinhas de quem tomou e não pagou.</p></div></div>
+        <div class="flex items-center gap-3"><span class="text-3xl">☕</span><div><p class="font-bold text-foam text-sm">Café Pass - O Guardião do Coador</p><p class="text-latte/70">Feito para acabar com as briguinhas de quem tomou e não pagou.</p></div></div>
         <p class="font-mono text-caramel font-bold">Sem cota = Sem cafeína © 2026</p>
       </div>
     </footer>

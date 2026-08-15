@@ -11,9 +11,11 @@ O projeto atual e uma conversao do arquivo estatico `passcafe.html` para uma apl
 - Vue 3: framework principal da interface.
 - Vite: servidor de desenvolvimento e ferramenta de build.
 - Firebase / Firestore: persistencia remota opcional.
-- Iconify + Pixelarticons: icones pixelados/cartunescos usados na interface Vue.
 - Tailwind CSS via CDN: classes utilitarias e tema visual definido no `index.html`.
+- Font Awesome via CDN: icones usados nos botoes, menus e paineis.
 - Google Fonts via CDN: fontes `Fredoka` e `Space Grotesk`.
+- JSZip via CDN: geracao do ZIP do projeto pelo botao "Baixar ZIP".
+- FileSaver.js via CDN: download do ZIP gerado no navegador.
 - API externa de QR Code: geracao do QR Code visual da chave Pix.
 
 ## Dependencias do `package.json`
@@ -21,8 +23,6 @@ O projeto atual e uma conversao do arquivo estatico `passcafe.html` para uma apl
 ```json
 {
   "@vitejs/plugin-vue": "^5.2.4",
-  "@iconify-json/pixelarticons": "^1.2.8",
-  "@iconify/vue": "^5.0.1",
   "vite": "^6.3.5",
   "vue": "^3.5.18",
   "firebase": "^12.1.0"
@@ -51,9 +51,6 @@ npm run preview
 |-- index.html
 |-- package.json
 |-- vite.config.js
-|-- firebase.json
-|-- firestore.rules
-|-- firestore.indexes.json
 |-- .env.example
 |-- README.md
 |-- passcafe.html
@@ -65,8 +62,7 @@ npm run preview
 |-- dist
 |-- exemplo_modelo
 `-- docs
-    |-- documentacao-tecnica.md
-    `-- backend-firestore.md
+    `-- documentacao-tecnica.md
 ```
 
 ## Arquivos importantes
@@ -79,7 +75,7 @@ Arquivo HTML de entrada da aplicacao. Ele:
 - importa o script principal `/src/main.js`;
 - carrega Tailwind CSS via CDN;
 - configura o tema do Tailwind direto no navegador;
-- carrega Google Fonts.
+- carrega Font Awesome, Google Fonts, JSZip e FileSaver.js.
 
 As cores personalizadas do tema ficam neste arquivo:
 
@@ -123,6 +119,7 @@ Funcionalidades principais:
 - alertas visuais por toast;
 - efeitos sonoros simples usando Web Audio API;
 - alternancia de mensagens/banners humoristicos;
+- download de um ZIP com os arquivos principais do projeto.
 
 Dados padrao definidos no componente:
 
@@ -195,23 +192,6 @@ export default defineConfig({
 })
 ```
 
-### `firebase.json`
-
-Configuracao do Firebase CLI. Aponta quais arquivos devem ser usados para Firestore Rules e indices.
-
-### `firestore.rules`
-
-Regras de seguranca do Firestore. O projeto permite leitura e escrita apenas nas estruturas usadas pelo app:
-
-- `passcafe/settings`
-- `passcafeMembers/{memberId}`
-
-Qualquer outro caminho fica bloqueado.
-
-### `firestore.indexes.json`
-
-Arquivo de indices compostos do Firestore. No momento esta vazio porque as consultas atuais nao precisam de indice customizado.
-
 ### `.env.example`
 
 Modelo das variaveis necessarias para conectar no Firebase:
@@ -253,8 +233,6 @@ Dados salvos:
 - configuracoes em `passcafe/settings`;
 - integrantes em `passcafeMembers`;
 - cada integrante usa o proprio `id` como ID do documento.
-
-As regras e instrucoes do backend estao detalhadas em `docs/backend-firestore.md`.
 
 ## Modelo de dados
 
@@ -323,8 +301,9 @@ Status possiveis:
 - QR Code: `https://api.qrserver.com/v1/create-qr-code/`
 - Tailwind CDN: `https://cdn.tailwindcss.com`
 - Google Fonts: `https://fonts.googleapis.com` e `https://fonts.gstatic.com`
-- Iconify Vue: pacote `@iconify/vue`
-- Pixelarticons: pacote `@iconify-json/pixelarticons`
+- Font Awesome CDN: `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css`
+- JSZip CDN: `https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js`
+- FileSaver CDN: `https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js`
 
 ## Build e distribuicao
 
