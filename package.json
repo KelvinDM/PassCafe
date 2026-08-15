@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "firebase:bootstrap-master": "node scripts/bootstrap-master.mjs",
+    "firebase:login": "npx firebase-tools login",
+    "firebase:deploy:rules": "npx firebase-tools deploy --only firestore:rules",
+    "firebase:deploy:indexes": "npx firebase-tools deploy --only firestore:indexes"
   },
   "dependencies": {
     "@iconify-json/pixelarticons": "^1.2.8",

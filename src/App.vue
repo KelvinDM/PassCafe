@@ -4,12 +4,18 @@ import pixelarticons from '@iconify-json/pixelarticons/icons.json'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   deleteMember as deleteFirestoreMember,
+  createCafeUser,
   hasFirebaseConfig,
+  loadAdmins,
   loadMembers,
   loadSettings,
+  loginAdmin,
+  logoutAdmin,
   saveMember,
   saveMembers,
-  saveSettings
+  saveSettings,
+  sendAdminPasswordReset,
+  watchAdminAuth
 } from './firebase'
 
 addCollection(pixelarticons)
@@ -55,7 +61,11 @@ const loading = ref(true)
 const userPayment = reactive({ name: '', dept: '' })
 const joinForm = reactive({ name: '', dept: '' })
 const adminForm = reactive({ ...DEFAULT_SETTINGS })
-const adminPass = ref('')
+const adminCredentials = reactive({ email: '', password: '' })
+const adminAuthLoading = ref(false)
+const adminUser = ref(null)
+const cafeUsers = ref([])
+const cafeUserForm = reactive({ email: '', password: '', role: 'APPRENTICE' })
 const adminNewMember = reactive({ name: '', dept: '' })
 const searchMember = ref('')
 const filterStatus = ref('ALL')
@@ -70,6 +80,7 @@ const paidMembers = computed(() => members.value.filter((member) => member.statu
 const unpaidCount = computed(() => members.value.length - paidMembers.value.length)
 const totalRaised = computed(() => paidMembers.value.length * Number(settings.monthlyFee || 0))
 const goalPercentage = computed(() => members.value.length ? Math.round((paidMembers.value.length / members.value.length) * 100) : 0)
+const isCoffeeMaster = computed(() => adminUser.value?.role === 'MASTER')
 const qrUrl = computed(() => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(settings.pixKey)}&color=1F120B&bgcolor=FFFDF9`)
 const filteredMembers = computed(() => {
   const search = searchMember.value.trim().toLowerCase()
@@ -81,6 +92,13 @@ const filteredMembers = computed(() => {
 })
 
 onMounted(async () => {
+  watchAdminAuth(async (user) => {
+    adminUser.value = user
+    adminUnlocked.value = Boolean(user)
+    if (user?.email) adminCredentials.email = user.email
+    cafeUsers.value = user ? await loadAdmins() : []
+  })
+
   try {
     const [loadedSettings, loadedMembers] = await Promise.all([
       loadSettings(loadLocalSettings()),
@@ -192,18 +210,92 @@ function viewUserReceipt(name) {
   playStampSound()
 }
 
-function unlockAdmin() {
-  if (adminPass.value === 'cafe123' || adminPass.value === 'admin') {
-    adminUnlocked.value = true
-    showToast('Painel do Mestre liberado com sucesso!', 'success')
-    return
-  }
-  showToast('Senha incorreta! Somente o Mestre do Café passa.', 'error')
+function authErrorMessage(error) {
+  const code = error?.code || ''
+  if (code.includes('auth/invalid-credential') || code.includes('auth/wrong-password')) return 'E-mail ou senha incorretos.'
+  if (code.includes('auth/user-not-found')) return 'Nenhum mestre cadastrado com esse e-mail.'
+  if (code.includes('auth/email-already-in-use')) return 'Esse e-mail já está cadastrado no Firebase.'
+  if (code.includes('auth/invalid-email')) return 'Digite um e-mail válido.'
+  if (code.includes('auth/weak-password')) return 'Use uma senha com pelo menos 6 caracteres.'
+  if (code.includes('auth/not-cafe-staff')) return 'Esse usuário existe, mas não é Mestre nem Aprendiz do Café.'
+  if (code.includes('auth/too-many-requests')) return 'Muitas tentativas. Aguarde um pouco e tente novamente.'
+  if (code.includes('permission-denied')) return 'Login aceito, mas falta liberar este usuário como Mestre/Aprendiz no Firestore.'
+  return 'Não foi possível autenticar agora.'
 }
 
-function lockAdmin() {
+async function unlockAdmin() {
+  const email = adminCredentials.email.trim()
+  const password = adminCredentials.password
+  if (!email || !password) return showToast('Informe e-mail e senha do Mestre do Café.', 'error')
+
+  try {
+    adminAuthLoading.value = true
+    await loginAdmin(email, password)
+    adminCredentials.password = ''
+    showToast('Painel do Mestre liberado com sucesso!', 'success')
+  } catch (error) {
+    showToast(authErrorMessage(error), 'error')
+  } finally {
+    adminAuthLoading.value = false
+  }
+}
+
+async function lockAdmin() {
+  await logoutAdmin()
   adminUnlocked.value = false
-  adminPass.value = ''
+  adminCredentials.password = ''
+  showToast('Painel do Mestre trancado.', 'info')
+}
+
+async function recoverAdminPassword() {
+  const email = adminCredentials.email.trim()
+  if (!email) return showToast('Digite seu e-mail para receber o link de recuperação.', 'error')
+
+  try {
+    adminAuthLoading.value = true
+    await sendAdminPasswordReset(email)
+    showToast('Link de recuperação enviado para o e-mail informado.', 'success')
+  } catch (error) {
+    showToast(authErrorMessage(error), 'error')
+  } finally {
+    adminAuthLoading.value = false
+  }
+}
+
+function roleLabel(role) {
+  return role === 'MASTER' ? 'Mestre do Café' : 'Aprendiz do Café'
+}
+
+async function refreshCafeUsers() {
+  cafeUsers.value = await loadAdmins()
+}
+
+async function addCafeUser() {
+  if (!isCoffeeMaster.value) return showToast('Somente o Mestre do Café pode convocar novos aprendizes.', 'error')
+
+  const email = cafeUserForm.email.trim()
+  const password = cafeUserForm.password
+  if (!email || !password) return showToast('Informe e-mail e senha inicial do novo usuário.', 'error')
+
+  try {
+    adminAuthLoading.value = true
+    const created = await createCafeUser({
+      email,
+      password,
+      role: cafeUserForm.role,
+      createdBy: adminUser.value.email
+    })
+    cafeUsers.value.push(created)
+    cafeUsers.value.sort((a, b) => a.email.localeCompare(b.email))
+    cafeUserForm.email = ''
+    cafeUserForm.password = ''
+    cafeUserForm.role = 'APPRENTICE'
+    showToast(`${roleLabel(created.role)} cadastrado com sucesso.`, 'success')
+  } catch (error) {
+    showToast(authErrorMessage(error), 'error')
+  } finally {
+    adminAuthLoading.value = false
+  }
 }
 
 async function saveAdminSettings() {
@@ -562,23 +654,26 @@ function playHornSound() { tone(180, 0.25, 'square') }
         <div v-if="!adminUnlocked" class="bg-crema p-8 rounded-3xl comic-border-lg shadow-comic-xl max-w-md mx-auto text-center space-y-4">
           <div class="w-16 h-16 bg-roast text-caramel rounded-2xl comic-border shadow-comic flex items-center justify-center mx-auto text-4xl"><Icon icon="pixelarticons:lock" /></div>
           <h2 class="text-2xl font-black text-espresso">Acesso Restrito ao Mestre do Café</h2>
-          <p class="text-xs text-mocha font-medium">Somente quem limpa o filtro e compra o pão pode alterar as configurações do Pix!</p>
+          <p class="text-xs text-mocha font-medium">Entre com o e-mail cadastrado no Firebase. A senha fica guardada lá, longe dos olhos curiosos do bule.</p>
           <form @submit.prevent="unlockAdmin" class="space-y-3 pt-2">
-            <input v-model="adminPass" type="password" placeholder="Senha secreta (Padrão: cafe123)" required class="w-full bg-foam text-espresso text-center font-mono font-bold py-3 rounded-xl comic-border focus:outline-none">
-            <button type="submit" class="w-full bg-caramel hover:bg-amber-600 text-espresso font-black py-3 rounded-xl comic-border shadow-comic hover:shadow-comic-hover inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:unlock" class="text-xl" /> ENTRAR NO PAINEL</button>
+            <input v-model="adminCredentials.email" type="email" autocomplete="email" placeholder="E-mail do Mestre do Café" required class="w-full bg-foam text-espresso text-center font-mono font-bold py-3 rounded-xl comic-border focus:outline-none">
+            <input v-model="adminCredentials.password" type="password" autocomplete="current-password" placeholder="Senha secreta" required class="w-full bg-foam text-espresso text-center font-mono font-bold py-3 rounded-xl comic-border focus:outline-none">
+            <button type="submit" :disabled="adminAuthLoading" class="w-full bg-caramel hover:bg-amber-600 disabled:opacity-70 text-espresso font-black py-3 rounded-xl comic-border shadow-comic hover:shadow-comic-hover inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:unlock" class="text-xl" /> {{ adminAuthLoading ? 'CONFERINDO CREDENCIAL...' : 'ENTRAR NO PAINEL' }}</button>
           </form>
-          <p class="text-[10px] text-mocha/70 italic">Dica: A senha padrão de teste é <code class="font-bold">cafe123</code></p>
+          <button type="button" @click="recoverAdminPassword" :disabled="adminAuthLoading" class="text-[11px] text-mocha hover:text-espresso font-bold underline decoration-2 underline-offset-2 disabled:opacity-60">
+            Esqueci a senha, mandar link por e-mail
+          </button>
         </div>
 
         <div v-else class="space-y-6">
           <div class="bg-roast text-foam p-6 rounded-3xl comic-border-lg shadow-comic-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div><span class="bg-caramel text-espresso text-[10px] font-black px-2.5 py-0.5 rounded-full comic-border uppercase">Modo Mestre Ativo</span><h2 class="text-2xl font-black text-foam mt-1 flex items-center gap-2">Painel do Mestre do Café <Icon icon="pixelarticons:crown" class="text-caramel" /></h2><p class="text-xs text-latte">Altere a chave Pix, valor mensal, aprove pagamentos ou reinicie o mês.</p></div>
+            <div><span class="bg-caramel text-espresso text-[10px] font-black px-2.5 py-0.5 rounded-full comic-border uppercase">{{ roleLabel(adminUser?.role) }} Ativo</span><h2 class="text-2xl font-black text-foam mt-1 flex items-center gap-2">Painel do Café <Icon icon="pixelarticons:crown" class="text-caramel" /></h2><p class="text-xs text-latte">Conectado como <span class="font-mono font-bold text-caramel">{{ adminUser?.email }}</span>. {{ isCoffeeMaster ? 'Você comanda o bule inteiro.' : 'Você ajuda a manter a vaquinha em ordem.' }}</p></div>
             <button @click="lockAdmin" class="bg-chili hover:bg-red-600 text-foam font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic inline-flex items-center gap-1"><Icon icon="pixelarticons:lock" /> Sair do Admin</button>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl space-y-4">
               <h3 class="text-lg font-black text-espresso border-b-2 border-espresso/20 pb-2 flex items-center gap-2"><Icon icon="pixelarticons:settings-cog" class="text-caramel text-2xl" /> Parâmetros da Cota</h3>
-              <form @submit.prevent="saveAdminSettings" class="space-y-4">
+              <form v-if="isCoffeeMaster" @submit.prevent="saveAdminSettings" class="space-y-4">
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Mês / Ano de Referência</label><input v-model="adminForm.month" type="text" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm"></div>
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Valor da Mensalidade (R$)</label><input v-model="adminForm.monthlyFee" type="number" step="0.5" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm font-mono"></div>
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Tipo da Chave Pix</label><select v-model="adminForm.pixType" class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm"><option value="E-mail">E-mail</option><option value="CPF / CNPJ">CPF / CNPJ</option><option value="Celular">Celular</option><option value="Chave Aleatória">Chave Aleatória</option></select></div>
@@ -586,6 +681,9 @@ function playHornSound() { tone(180, 0.25, 'square') }
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Nome do Titular da Conta</label><input v-model="adminForm.pixOwner" type="text" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm"></div>
                 <button type="submit" class="w-full bg-mint hover:bg-emerald-600 text-foam font-black text-sm py-3 rounded-xl comic-border shadow-comic inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:checkbox-on" class="text-xl" /> SALVAR ALTERAÇÕES</button>
               </form>
+              <div v-else class="bg-foam p-4 rounded-2xl comic-border text-xs text-mocha font-bold">
+                Configurações de Pix, mês e valor são território exclusivo do Mestre do Café.
+              </div>
             </div>
             <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl space-y-4 flex flex-col justify-between">
               <div>
@@ -602,6 +700,50 @@ function playHornSound() { tone(180, 0.25, 'square') }
                   <input v-model="adminNewMember.dept" type="text" placeholder="Setor (ex: RH)" class="w-full bg-crema text-xs font-bold p-2 rounded-lg comic-border">
                   <button type="submit" class="w-full bg-mint text-foam font-bold text-xs py-2 rounded-lg comic-border shadow-comic inline-flex items-center justify-center gap-1"><Icon icon="pixelarticons:user-plus" /> Inserir na Lista</button>
                 </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
+            <div class="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-5">
+              <div>
+                <h3 class="text-lg font-black text-espresso flex items-center gap-2"><Icon icon="pixelarticons:users" class="text-caramel text-2xl" /> Brigada do Café</h3>
+                <p class="text-xs text-mocha font-medium">Mestres administram usuários e configurações. Aprendizes ajudam na rotina da vaquinha.</p>
+              </div>
+              <button @click="refreshCafeUsers" class="bg-foam hover:bg-latte text-espresso font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic inline-flex items-center gap-1">
+                <Icon icon="pixelarticons:arrow-up-wide-narrow" /> Atualizar lista
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div class="bg-foam rounded-2xl comic-border overflow-hidden">
+                <div v-if="cafeUsers.length === 0" class="p-4 text-xs font-bold text-mocha">Nenhum usuário da brigada encontrado.</div>
+                <div v-for="user in cafeUsers" :key="user.uid" class="p-4 border-b-2 border-espresso/10 last:border-b-0 flex items-center justify-between gap-3">
+                  <div>
+                    <p class="font-mono font-black text-sm text-espresso">{{ user.email }}</p>
+                    <p class="text-[11px] font-bold" :class="user.role === 'MASTER' ? 'text-caramel' : 'text-mint'">{{ roleLabel(user.role) }}</p>
+                  </div>
+                  <Icon :icon="user.role === 'MASTER' ? 'pixelarticons:crown' : 'pixelarticons:user'" class="text-2xl" :class="user.role === 'MASTER' ? 'text-caramel' : 'text-mint'" />
+                </div>
+              </div>
+
+              <div v-if="isCoffeeMaster" class="bg-foam p-4 rounded-2xl comic-border">
+                <h4 class="text-xs font-bold text-espresso uppercase mb-3">Convocar Novo Usuário</h4>
+                <form @submit.prevent="addCafeUser" class="space-y-3">
+                  <input v-model="cafeUserForm.email" type="email" autocomplete="off" placeholder="E-mail do aprendiz ou mestre" required class="w-full bg-crema text-xs font-bold p-2.5 rounded-lg comic-border">
+                  <input v-model="cafeUserForm.password" type="password" autocomplete="new-password" placeholder="Senha inicial" required class="w-full bg-crema text-xs font-bold p-2.5 rounded-lg comic-border">
+                  <select v-model="cafeUserForm.role" class="w-full bg-crema text-xs font-bold p-2.5 rounded-lg comic-border">
+                    <option value="APPRENTICE">Aprendiz do Café</option>
+                    <option value="MASTER">Mestre do Café</option>
+                  </select>
+                  <button type="submit" :disabled="adminAuthLoading" class="w-full bg-caramel hover:bg-amber-600 disabled:opacity-70 text-espresso font-black text-xs py-3 rounded-xl comic-border shadow-comic inline-flex items-center justify-center gap-2">
+                    <Icon icon="pixelarticons:user-plus" class="text-lg" /> CADASTRAR NA BRIGADA
+                  </button>
+                </form>
+              </div>
+
+              <div v-else class="bg-foam p-4 rounded-2xl comic-border text-xs text-mocha font-bold">
+                Apenas o Mestre do Café pode convocar novos aprendizes.
               </div>
             </div>
           </div>

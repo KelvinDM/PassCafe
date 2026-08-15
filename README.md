@@ -133,19 +133,26 @@ O painel administrativo permite:
 - reiniciar pagamentos do mes;
 - acionar a cobranca moral-sonora dos pendentes.
 
-Senha padrao de teste:
+O acesso do painel usa **Firebase Authentication** com e-mail e senha. A senha nao fica salva no codigo.
+
+Existem dois cargos:
+
+- **Mestre do Cafe**: controla configuracoes e cadastra usuarios.
+- **Aprendiz do Cafe**: ajuda na rotina da vaquinha.
+
+Para criar o primeiro Mestre:
+
+- habilite **Authentication > Sign-in method > Email/Password** no Firebase;
+- crie um usuario em **Authentication > Users**;
+- crie o documento desse usuario em `admins/{uid}` com `role: "MASTER"`.
+
+Depois disso, o Mestre pode adicionar Aprendizes e outros Mestres pela propria aplicacao.
+
+Se a senha for esquecida, use o link de recuperacao no proprio painel admin.
 
 ```text
-cafe123
+docs/backend-firestore.md
 ```
-
-Tambem existe:
-
-```text
-admin
-```
-
-Aviso de responsabilidade cafeinada: essa senha esta no frontend. Ela serve para brincadeira, teste e controle simples. Para seguranca real, precisa de autenticacao de verdade no backend/Firebase.
 
 ## Documentacao
 

@@ -113,7 +113,7 @@ Funcionalidades principais:
 - marcacao manual de pagamento;
 - remocao de participante;
 - consulta e impressao de recibo;
-- painel administrativo com senha simples;
+- painel administrativo com Firebase Authentication;
 - edicao de mes, valor da mensalidade e dados Pix;
 - reinicio mensal dos pagamentos;
 - alertas visuais por toast;
@@ -126,24 +126,22 @@ Dados padrao definidos no componente:
 - participantes iniciais em `DEFAULT_MEMBERS`;
 - frases e banners em `FUNNY_EXCUSES` e `FUNNY_BANNERS`.
 
-Senha de teste do painel admin:
+O acesso admin usa e-mail/senha do Firebase Authentication. A senha nao fica no frontend e pode ser recuperada pelo link de redefinicao enviado por e-mail. Os cargos ficam em `admins/{uid}`:
 
-```text
-cafe123
-admin
-```
-
-Importante: essa senha esta no frontend e nao deve ser tratada como seguranca real em producao.
+- `MASTER`: Mestre do Cafe, com permissao para configuracoes e cadastro de usuarios.
+- `APPRENTICE`: Aprendiz do Cafe, com acesso de apoio ao painel.
 
 ### `src/firebase.js`
 
-Modulo de integracao com Firebase/Firestore.
+Modulo de integracao com Firebase, Firestore e Authentication.
 
 Responsabilidades:
 
 - ler configuracoes do Firebase via `import.meta.env`;
 - detectar se existe configuracao minima valida;
 - inicializar o app Firebase quando configurado;
+- autenticar o admin por e-mail/senha;
+- enviar link de recuperacao de senha;
 - ler e salvar configuracoes da cota;
 - ler, salvar e remover membros;
 - criar dados iniciais no Firestore quando a colecao esta vazia.
@@ -153,11 +151,18 @@ Colecoes/documentos usados:
 ```text
 passcafe/settings
 passcafeMembers/{memberId}
+admins/{uid}
 ```
 
 Funcoes exportadas:
 
 - `hasFirebaseConfig`
+- `watchAdminAuth(callback)`
+- `loginAdmin(email, password)`
+- `logoutAdmin()`
+- `sendAdminPasswordReset(email)`
+- `loadAdmins()`
+- `createCafeUser({ email, password, role, createdBy })`
 - `loadSettings(defaultSettings)`
 - `saveSettings(settings)`
 - `loadMembers(defaultMembers)`
@@ -231,6 +236,7 @@ Dados salvos:
 
 - configuracoes em `passcafe/settings`;
 - integrantes em `passcafeMembers`;
+- cargos administrativos em `admins`;
 - cada integrante usa o proprio `id` como ID do documento.
 
 ## Modelo de dados
@@ -325,7 +331,7 @@ npm run preview
 
 ## Pontos de atencao
 
-- A senha do admin esta exposta no frontend e serve apenas para uso simples/teste.
+- O painel admin usa Firebase Authentication; o primeiro Mestre tambem precisa do documento `admins/{uid}` com `role: "MASTER"`.
 - O Firestore depende de regras de seguranca configuradas no console do Firebase.
 - O Tailwind esta sendo carregado por CDN; para producao mais robusta, pode valer migrar para Tailwind instalado no build.
 - O app usa `localStorage` como fallback, entao dados locais ficam somente no navegador atual.
