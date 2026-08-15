@@ -57,8 +57,16 @@ service cloud.firestore {
         && request.resource.data.name.size() <= 120
         && isString(request.resource.data.dept)
         && request.resource.data.dept.size() <= 80
-        && request.resource.data.status in ['PAID', 'UNPAID']
+        && request.resource.data.status in ['PAID', 'UNPAID', 'PENDING']
         && isOptionalString(request.resource.data.paidAt);
+    }
+
+    function isPublicMemberWrite(memberId) {
+      return isValidMember(memberId)
+        && request.resource.data.status in ['UNPAID', 'PENDING']
+        && request.resource.data.paidAt == null
+        && (!exists(/databases/$(database)/documents/passcafeMembers/$(memberId))
+          || resource.data.status != 'PAID');
     }
 
     function isValidAdmin(adminId) {
@@ -70,6 +78,32 @@ service cloud.firestore {
         && request.resource.data.role in ['MASTER', 'APPRENTICE']
         && request.resource.data.createdAt is string
         && request.resource.data.createdBy is string;
+    }
+
+    function isValidPaymentRequest(requestId) {
+      return request.resource.data.keys().hasOnly(['id', 'memberId', 'name', 'dept', 'amount', 'month', 'status', 'requestedAt', 'reviewedAt', 'reviewedBy'])
+        && request.resource.data.id == requestId
+        && isString(request.resource.data.memberId)
+        && isString(request.resource.data.name)
+        && request.resource.data.name.size() <= 120
+        && isString(request.resource.data.dept)
+        && request.resource.data.dept.size() <= 80
+        && request.resource.data.amount is number
+        && request.resource.data.amount >= 0
+        && request.resource.data.amount <= 1000
+        && isString(request.resource.data.month)
+        && request.resource.data.month.size() <= 40
+        && request.resource.data.status in ['PENDING', 'APPROVED', 'REJECTED']
+        && request.resource.data.requestedAt is string
+        && isOptionalString(request.resource.data.reviewedAt)
+        && isOptionalString(request.resource.data.reviewedBy);
+    }
+
+    function isPublicPaymentRequest(requestId) {
+      return isValidPaymentRequest(requestId)
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.reviewedAt == null
+        && request.resource.data.reviewedBy == null;
     }
 
     match /admins/{adminId} {
@@ -86,8 +120,15 @@ service cloud.firestore {
 
     match /passcafeMembers/{memberId} {
       allow read: if true;
-      allow create, update: if isValidMember(memberId);
+      allow create, update: if (isCafeStaff() && isValidMember(memberId)) || isPublicMemberWrite(memberId);
       allow delete: if isCafeStaff();
+    }
+
+    match /paymentRequests/{requestId} {
+      allow read: if isCafeStaff();
+      allow create: if isPublicPaymentRequest(requestId);
+      allow update: if isCafeStaff() && isValidPaymentRequest(requestId);
+      allow delete: if false;
     }
 
     match /{document=**} {

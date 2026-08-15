@@ -14,6 +14,7 @@ import {
   getDoc,
   getDocs,
   getFirestore,
+  onSnapshot,
   orderBy,
   query,
   setDoc,
@@ -135,9 +136,6 @@ export async function loadMembers(defaultMembers) {
   if (!db) return defaultMembers
   const snapshot = await getDocs(query(collection(db, 'passcafeMembers'), orderBy('name')))
   if (snapshot.empty) {
-    const batch = writeBatch(db)
-    defaultMembers.forEach((member) => batch.set(doc(db, 'passcafeMembers', member.id), member))
-    await batch.commit()
     return defaultMembers
   }
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
@@ -158,4 +156,32 @@ export async function saveMembers(members) {
   const batch = writeBatch(db)
   members.forEach((member) => batch.set(doc(db, 'passcafeMembers', member.id), member, { merge: true }))
   await batch.commit()
+}
+
+export async function createPaymentRequest(request) {
+  if (!db) return request
+  await setDoc(doc(db, 'paymentRequests', request.id), request)
+  return request
+}
+
+export async function loadPaymentRequests() {
+  if (!db) return []
+  const snapshot = await getDocs(query(collection(db, 'paymentRequests'), orderBy('requestedAt', 'desc')))
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+}
+
+export function watchPaymentRequests(callback) {
+  if (!db) {
+    callback([])
+    return () => {}
+  }
+
+  return onSnapshot(query(collection(db, 'paymentRequests'), orderBy('requestedAt', 'desc')), (snapshot) => {
+    callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })))
+  })
+}
+
+export async function updatePaymentRequest(id, patch) {
+  if (!db) return
+  await setDoc(doc(db, 'paymentRequests', id), patch, { merge: true })
 }

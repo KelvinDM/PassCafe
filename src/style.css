@@ -14,6 +14,253 @@ body {
   border: 4px solid #1F120B;
 }
 
+button.comic-border,
+.cafe-button {
+  box-shadow: 3px 3px 0 0 #1F120B;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    filter 140ms ease,
+    background-color 140ms ease;
+}
+
+button.comic-border:hover:not(:disabled),
+.cafe-button:hover:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 0 #1F120B;
+  filter: saturate(1.04);
+}
+
+button.comic-border:active:not(:disabled),
+.cafe-button:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 0 #1F120B;
+}
+
+button.comic-border:focus-visible,
+.cafe-button:focus-visible,
+input.comic-border:focus-visible,
+select.comic-border:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 4px rgba(217, 119, 6, 0.24),
+    3px 3px 0 0 #1F120B;
+}
+
+input.comic-border,
+select.comic-border {
+  transition:
+    box-shadow 140ms ease,
+    background-color 140ms ease,
+    transform 140ms ease;
+}
+
+input.comic-border:focus,
+select.comic-border:focus {
+  background-color: #FFFDF9;
+  box-shadow:
+    0 0 0 4px rgba(217, 119, 6, 0.18),
+    inset 0 -2px 0 rgba(31, 18, 11, 0.08);
+}
+
+select.comic-border {
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #1F120B 50%),
+    linear-gradient(135deg, #1F120B 50%, transparent 50%);
+  background-position:
+    calc(100% - 17px) 50%,
+    calc(100% - 10px) 50%;
+  background-size: 7px 7px, 7px 7px;
+  background-repeat: no-repeat;
+}
+
+select.comic-border:hover {
+  background-color: #FFFDF9;
+}
+
+.cafe-select {
+  position: relative;
+  min-width: 13rem;
+}
+
+.cafe-select__trigger {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.75rem;
+  background: #FFFDF9;
+  color: #1F120B;
+  font-size: 0.875rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.cafe-select__trigger--open {
+  background: #FBF3E8;
+  box-shadow: 1px 1px 0 0 #1F120B;
+  transform: translate(2px, 2px);
+}
+
+.cafe-select__trigger:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 4px rgba(217, 119, 6, 0.24),
+    3px 3px 0 0 #1F120B;
+}
+
+.cafe-select__chevron {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+  transition: transform 140ms ease;
+}
+
+.cafe-select__menu {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: #FFFDF9;
+  box-shadow:
+    4px 4px 0 0 #1F120B,
+    0 14px 28px rgba(31, 18, 11, 0.24);
+}
+
+.cafe-select__option {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 0;
+  border-bottom: 2px solid rgba(31, 18, 11, 0.12);
+  background: #FFFDF9;
+  color: #1F120B;
+  font-size: 0.875rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: left;
+  box-shadow: none;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.cafe-select__option:last-child {
+  border-bottom: 0;
+}
+
+.cafe-select__option:hover,
+.cafe-select__option:focus-visible,
+.cafe-select__option--active {
+  outline: none;
+  background: #FCD9A5;
+  color: #92400E;
+}
+
+.cafe-select__option svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+
+.cafe-button__icon {
+  width: 1.15em;
+  height: 1.15em;
+  flex: 0 0 auto;
+}
+
+.member-list-shell {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 3px 3px 0 0 #1F120B;
+}
+
+.member-list-scroll {
+  overflow-x: auto;
+  background: #FFFDF9;
+}
+
+.member-list-table {
+  min-width: 830px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.member-list-table thead,
+.member-list-table tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.member-list-table tbody {
+  display: block;
+  max-height: 488px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #D97706 #FBF3E8;
+}
+
+.member-list-scroll th {
+  background: #3D2314;
+  box-shadow: inset 0 -3px 0 #1F120B;
+}
+
+.member-list-scroll th:first-child {
+  border-top-left-radius: 0.75rem;
+}
+
+.member-list-scroll th:last-child {
+  border-top-right-radius: 0.75rem;
+}
+
+.member-list-table tbody::-webkit-scrollbar {
+  width: 12px;
+}
+
+.member-list-scroll::-webkit-scrollbar {
+  height: 12px;
+}
+
+.member-list-table tbody::-webkit-scrollbar-track,
+.member-list-scroll::-webkit-scrollbar-track {
+  background: #FBF3E8;
+  border-left: 2px solid #1F120B;
+}
+
+.member-list-table tbody::-webkit-scrollbar-thumb,
+.member-list-scroll::-webkit-scrollbar-thumb {
+  background: #D97706;
+  border: 2px solid #1F120B;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 2px rgba(255, 253, 249, 0.28);
+}
+
+.member-list-table tbody::-webkit-scrollbar-thumb:hover,
+.member-list-scroll::-webkit-scrollbar-thumb:hover {
+  background: #F59E0B;
+}
+
+.member-list-table tbody::-webkit-scrollbar-corner,
+.member-list-scroll::-webkit-scrollbar-corner {
+  background: #FBF3E8;
+}
+
 .nav-icon {
   width: 20px;
   height: 20px;
@@ -102,6 +349,69 @@ body {
 
 .feature-icon--proof {
   background: #C7F4DC;
+}
+
+.stat-tile {
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+}
+
+.stat-tile__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 1rem;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.stat-tile__value {
+  display: block;
+  margin-top: 0.1rem;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.stat-tile--foam {
+  background: #FFFDF9;
+}
+
+.stat-tile--foam .stat-tile__label {
+  color: #603813;
+}
+
+.stat-tile--foam .stat-tile__value {
+  color: #1F120B;
+}
+
+.stat-tile--mint {
+  background: rgba(16, 185, 129, 0.16);
+}
+
+.stat-tile--mint .stat-tile__label,
+.stat-tile--mint .stat-tile__value {
+  color: #047857;
+}
+
+.stat-tile--chili {
+  background: rgba(239, 68, 68, 0.16);
+}
+
+.stat-tile--chili .stat-tile__label,
+.stat-tile--chili .stat-tile__value {
+  color: #B91C1C;
+}
+
+.stat-tile--caramel {
+  background: rgba(217, 119, 6, 0.16);
+}
+
+.stat-tile--caramel .stat-tile__label,
+.stat-tile--caramel .stat-tile__value {
+  color: #92400E;
 }
 
 @keyframes stampIn {

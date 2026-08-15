@@ -1,13 +1,19 @@
 <script setup>
 import { Icon, addCollection } from '@iconify/vue'
 import pixelarticons from '@iconify-json/pixelarticons/icons.json'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import CafeButton from './components/CafeButton.vue'
+import CafeSelect from './components/CafeSelect.vue'
+import FeatureIcon from './components/FeatureIcon.vue'
+import StatTile from './components/StatTile.vue'
 import {
   deleteMember as deleteFirestoreMember,
   createCafeUser,
+  createPaymentRequest,
   hasFirebaseConfig,
   loadAdmins,
   loadMembers,
+  loadPaymentRequests,
   loadSettings,
   loginAdmin,
   logoutAdmin,
@@ -15,7 +21,9 @@ import {
   saveMembers,
   saveSettings,
   sendAdminPasswordReset,
-  watchAdminAuth
+  updatePaymentRequest,
+  watchAdminAuth,
+  watchPaymentRequests
 } from './firebase'
 
 addCollection(pixelarticons)
@@ -52,6 +60,25 @@ const FUNNY_BANNERS = [
   'Cuidado! O café de quem não paga fica com sabor de chá de boldo requentado.'
 ]
 
+const statusOptions = [
+  { value: 'ALL', label: 'Todos os Colegas' },
+  { value: 'PAID', label: 'Quitados (Paga-Lanches)' },
+  { value: 'PENDING', label: 'Na Fila do Fiscal' },
+  { value: 'UNPAID', label: 'Desidratados (Pendentes)' }
+]
+
+const pixTypeOptions = [
+  { value: 'E-mail', label: 'E-mail' },
+  { value: 'CPF / CNPJ', label: 'CPF / CNPJ' },
+  { value: 'Celular', label: 'Celular' },
+  { value: 'Chave Aleatória', label: 'Chave Aleatória' }
+]
+
+const cafeRoleOptions = [
+  { value: 'APPRENTICE', label: 'Aprendiz do Café' },
+  { value: 'MASTER', label: 'Mestre do Café' }
+]
+
 const settings = reactive({ ...DEFAULT_SETTINGS })
 const members = ref([...DEFAULT_MEMBERS])
 const activeTab = ref('pay')
@@ -65,6 +92,7 @@ const adminCredentials = reactive({ email: '', password: '' })
 const adminAuthLoading = ref(false)
 const adminUser = ref(null)
 const cafeUsers = ref([])
+const paymentRequests = ref([])
 const cafeUserForm = reactive({ email: '', password: '', role: 'APPRENTICE' })
 const adminNewMember = reactive({ name: '', dept: '' })
 const searchMember = ref('')
@@ -75,13 +103,24 @@ const joinModalOpen = ref(false)
 const funnyExcuse = ref('"Não paguei ainda porque estou fazendo jejum intermitente de cafeína..."')
 const funnyBanner = ref(FUNNY_BANNERS[0])
 const toasts = ref([])
+let unwatchPaymentRequests = () => {}
+let paymentRequestsReady = false
 
 const paidMembers = computed(() => members.value.filter((member) => member.status === 'PAID'))
+const pendingMembers = computed(() => members.value.filter((member) => member.status === 'PENDING'))
 const unpaidCount = computed(() => members.value.length - paidMembers.value.length)
 const totalRaised = computed(() => paidMembers.value.length * Number(settings.monthlyFee || 0))
 const goalPercentage = computed(() => members.value.length ? Math.round((paidMembers.value.length / members.value.length) * 100) : 0)
 const isCoffeeMaster = computed(() => adminUser.value?.role === 'MASTER')
-const qrUrl = computed(() => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(settings.pixKey)}&color=1F120B&bgcolor=FFFDF9`)
+const pendingPaymentRequests = computed(() => {
+  const unique = new Map()
+  paymentRequests.value
+    .filter((request) => request.status === 'PENDING')
+    .forEach((request) => unique.set(request.id, request))
+  return [...unique.values()]
+})
+const pixPayload = computed(() => buildPixPayload())
+const qrUrl = computed(() => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixPayload.value)}&color=1F120B&bgcolor=FFFDF9`)
 const filteredMembers = computed(() => {
   const search = searchMember.value.trim().toLowerCase()
   return members.value.filter((member) => {
@@ -93,10 +132,25 @@ const filteredMembers = computed(() => {
 
 onMounted(async () => {
   watchAdminAuth(async (user) => {
+    unwatchPaymentRequests()
+    paymentRequestsReady = false
     adminUser.value = user
     adminUnlocked.value = Boolean(user)
     if (user?.email) adminCredentials.email = user.email
     cafeUsers.value = user ? await loadAdmins() : []
+    paymentRequests.value = []
+    if (user) {
+      unwatchPaymentRequests = watchPaymentRequests((requests) => {
+        const previousPending = pendingPaymentRequests.value.length
+        paymentRequests.value = requests
+        const nextPending = requests.filter((request) => request.status === 'PENDING').length
+        if (paymentRequestsReady && nextPending > previousPending) {
+          showToast('Notificação da brigada: tem Pix novo pedindo carimbo.', 'info')
+          playMailSound()
+        }
+        paymentRequestsReady = true
+      })
+    }
   })
 
   try {
@@ -118,6 +172,8 @@ onMounted(async () => {
   }, 5000)
 })
 
+onBeforeUnmount(() => unwatchPaymentRequests())
+
 function loadLocalSettings() {
   return JSON.parse(localStorage.getItem('cafe_settings') || 'null') || DEFAULT_SETTINGS
 }
@@ -136,6 +192,11 @@ function switchTab(tabId) {
   playClickSound()
 }
 
+function openJoinModal() {
+  joinModalOpen.value = true
+  playOpenSound()
+}
+
 function nowFormatted() {
   const now = new Date()
   return `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
@@ -145,9 +206,78 @@ function formatMoney(value) {
   return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+function emv(id, value) {
+  const content = String(value ?? '')
+  return `${id}${content.length.toString().padStart(2, '0')}${content}`
+}
+
+function normalizePixText(value, maxLength) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9 .,&-]/g, '')
+    .trim()
+    .toUpperCase()
+    .slice(0, maxLength)
+}
+
+function crc16(payload) {
+  let crc = 0xffff
+  for (let index = 0; index < payload.length; index += 1) {
+    crc ^= payload.charCodeAt(index) << 8
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = crc & 0x8000 ? (crc << 1) ^ 0x1021 : crc << 1
+      crc &= 0xffff
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0')
+}
+
+function buildPixPayload() {
+  const pixKey = settings.pixKey.trim()
+  const merchantName = normalizePixText(settings.pixOwner || 'CAFE PASS', 25) || 'CAFE PASS'
+  const merchantCity = 'FIRMA'
+  const amount = Number(settings.monthlyFee || 0).toFixed(2)
+  const description = normalizePixText(`Cafe Pass ${settings.month}`, 40)
+  const merchantAccount = emv('00', 'br.gov.bcb.pix') + emv('01', pixKey) + emv('02', description)
+  const additionalData = emv('05', 'CAFEPASS')
+
+  const payloadWithoutCrc = [
+    emv('00', '01'),
+    emv('26', merchantAccount),
+    emv('52', '0000'),
+    emv('53', '986'),
+    emv('54', amount),
+    emv('58', 'BR'),
+    emv('59', merchantName),
+    emv('60', merchantCity),
+    emv('62', additionalData),
+    '6304'
+  ].join('')
+
+  return `${payloadWithoutCrc}${crc16(payloadWithoutCrc)}`
+}
+
 async function persistMember(member) {
   saveLocalState()
   await saveMember(member)
+}
+
+async function requestPaymentApproval(member) {
+  const request = {
+    id: `${member.id}-${Date.now()}`,
+    memberId: member.id,
+    name: member.name,
+    dept: member.dept || 'Geral',
+    amount: Number(settings.monthlyFee || 0),
+    month: settings.month,
+    status: 'PENDING',
+    requestedAt: new Date().toISOString(),
+    reviewedAt: null,
+    reviewedBy: null
+  }
+
+  await createPaymentRequest(request)
 }
 
 async function handleUserPayment() {
@@ -157,32 +287,46 @@ async function handleUserPayment() {
 
   let member = members.value.find((item) => item.name.toLowerCase() === name.toLowerCase())
   if (member) {
-    member.status = 'PAID'
-    member.paidAt = nowFormatted()
+    if (member.status === 'PAID') {
+      showToast(`${member.name} já está cafeinado oficialmente.`, 'info')
+      playBumpSound()
+      return
+    }
+    if (member.status === 'PENDING') {
+      showToast(`${member.name} já está na fila do fiscal do bule.`, 'info')
+      playBumpSound()
+      return
+    }
+    member.status = 'PENDING'
+    member.paidAt = null
     if (dept !== 'Geral') member.dept = dept
   } else {
-    member = { id: Date.now().toString(), name, dept, status: 'PAID', paidAt: nowFormatted() }
+    member = { id: Date.now().toString(), name, dept, status: 'PENDING', paidAt: null }
     members.value.push(member)
   }
 
   await persistMember(member)
-  showToast(`Pagamento registrado com sucesso para ${name}!`, 'success')
-  playSuccessSound()
+  await requestPaymentApproval(member)
+  showToast(`Pedido enviado para a brigada do café. Agora é perícia do Pix!`, 'success')
+  playMailSound()
   userPayment.name = ''
   userPayment.dept = ''
-  receiptSearch.value = member.name
-  selectedReceipt.value = member
-  switchTab('receipts')
 }
 
 async function markAsPaidFromList(id) {
   const member = members.value.find((item) => item.id === id)
   if (!member) return
-  member.status = 'PAID'
-  member.paidAt = nowFormatted()
+  if (member.status === 'PENDING') {
+    showToast(`${member.name} já está aguardando carimbo da brigada.`, 'info')
+    playBumpSound()
+    return
+  }
+  member.status = 'PENDING'
+  member.paidAt = null
   await persistMember(member)
-  showToast(`Pagamento confirmado para ${member.name}!`, 'success')
-  playSuccessSound()
+  await requestPaymentApproval(member)
+  showToast(`${member.name} entrou na fila de conferência do Pix.`, 'success')
+  playMailSound()
 }
 
 async function removeMember(id) {
@@ -191,14 +335,24 @@ async function removeMember(id) {
   saveLocalState()
   await deleteFirestoreMember(id)
   if (member) showToast(`Colega ${member.name} saiu da vaquinha deste mês.`, 'info')
+  playRemoveSound()
 }
 
 function searchAndShowReceipt() {
   const name = receiptSearch.value.trim()
-  if (!name) return showToast('Digite um nome para consultar!', 'error')
+  if (!name) {
+    playErrorSound()
+    return showToast('Digite um nome para consultar!', 'error')
+  }
   const member = members.value.find((item) => item.name.toLowerCase() === name.toLowerCase())
-  if (!member) return showToast('Colega não encontrado na lista do mês!', 'error')
-  if (member.status !== 'PAID') return showToast(`Atenção: ${member.name} ainda consta como PENDENTE!`, 'error')
+  if (!member) {
+    playErrorSound()
+    return showToast('Colega não encontrado na lista do mês!', 'error')
+  }
+  if (member.status !== 'PAID') {
+    playErrorSound()
+    return showToast(`Atenção: ${member.name} ainda consta como PENDENTE!`, 'error')
+  }
   selectedReceipt.value = member
   playStampSound()
 }
@@ -226,15 +380,20 @@ function authErrorMessage(error) {
 async function unlockAdmin() {
   const email = adminCredentials.email.trim()
   const password = adminCredentials.password
-  if (!email || !password) return showToast('Informe e-mail e senha do Mestre do Café.', 'error')
+  if (!email || !password) {
+    playErrorSound()
+    return showToast('Informe e-mail e senha do Mestre do Café.', 'error')
+  }
 
   try {
     adminAuthLoading.value = true
     await loginAdmin(email, password)
     adminCredentials.password = ''
     showToast('Painel do Mestre liberado com sucesso!', 'success')
+    playAdminUnlockSound()
   } catch (error) {
     showToast(authErrorMessage(error), 'error')
+    playErrorSound()
   } finally {
     adminAuthLoading.value = false
   }
@@ -245,18 +404,24 @@ async function lockAdmin() {
   adminUnlocked.value = false
   adminCredentials.password = ''
   showToast('Painel do Mestre trancado.', 'info')
+  playLockSound()
 }
 
 async function recoverAdminPassword() {
   const email = adminCredentials.email.trim()
-  if (!email) return showToast('Digite seu e-mail para receber o link de recuperação.', 'error')
+  if (!email) {
+    playErrorSound()
+    return showToast('Digite seu e-mail para receber o link de recuperação.', 'error')
+  }
 
   try {
     adminAuthLoading.value = true
     await sendAdminPasswordReset(email)
     showToast('Link de recuperação enviado para o e-mail informado.', 'success')
+    playMailSound()
   } catch (error) {
     showToast(authErrorMessage(error), 'error')
+    playErrorSound()
   } finally {
     adminAuthLoading.value = false
   }
@@ -266,16 +431,108 @@ function roleLabel(role) {
   return role === 'MASTER' ? 'Mestre do Café' : 'Aprendiz do Café'
 }
 
+function memberStatusLabel(status) {
+  if (status === 'PAID') return 'CAFEINADO (QUITADO)'
+  if (status === 'PENDING') return 'EM PERÍCIA DO PIX'
+  return 'DESIDRATADO (PENDENTE)'
+}
+
+function memberStatusIcon(status) {
+  if (status === 'PAID') return 'pixelarticons:coffee'
+  if (status === 'PENDING') return 'pixelarticons:hourglass'
+  return 'pixelarticons:robot-face-sad'
+}
+
+function memberStatusClass(status) {
+  if (status === 'PAID') return 'bg-mint text-foam'
+  if (status === 'PENDING') return 'bg-caramel text-espresso'
+  return 'bg-chili text-foam'
+}
+
+function memberAvatarClass(status) {
+  if (status === 'PAID') return 'bg-mint/20 text-mint'
+  if (status === 'PENDING') return 'bg-caramel/20 text-caramel'
+  return 'bg-chili/20 text-chili'
+}
+
 async function refreshCafeUsers() {
   cafeUsers.value = await loadAdmins()
+  paymentRequests.value = await loadPaymentRequests()
+}
+
+async function refreshPaymentRequests() {
+  paymentRequests.value = await loadPaymentRequests()
+  showToast('Fila de Pix auditada novamente. O coador foi sacudido.', 'info')
+  playClickSound()
+}
+
+async function approvePaymentRequest(request) {
+  const member = members.value.find((item) => item.id === request.memberId) || {
+    id: request.memberId,
+    name: request.name,
+    dept: request.dept || 'Geral',
+    status: 'PENDING',
+    paidAt: null
+  }
+  const wasNewMember = !members.value.some((item) => item.id === request.memberId)
+
+  member.name = request.name
+  member.dept = request.dept || 'Geral'
+  member.status = 'PAID'
+  member.paidAt = nowFormatted()
+  if (wasNewMember) members.value.push(member)
+
+  await persistMember(member)
+  await updatePaymentRequest(request.id, {
+    ...request,
+    status: 'APPROVED',
+    reviewedAt: new Date().toISOString(),
+    reviewedBy: adminUser.value?.email || 'Brigada do Café'
+  })
+  paymentRequests.value = paymentRequests.value.map((item) => (
+    item.id === request.id
+      ? { ...item, status: 'APPROVED', reviewedAt: new Date().toISOString(), reviewedBy: adminUser.value?.email }
+      : item
+  ))
+  showToast(`${request.name} aprovado. Café liberado sem recurso ao RH.`, 'success')
+  playSuccessSound()
+}
+
+async function rejectPaymentRequest(request) {
+  const member = members.value.find((item) => item.id === request.memberId)
+  if (member && member.status === 'PENDING') {
+    member.status = 'UNPAID'
+    member.paidAt = null
+    await persistMember(member)
+  }
+
+  await updatePaymentRequest(request.id, {
+    ...request,
+    status: 'REJECTED',
+    reviewedAt: new Date().toISOString(),
+    reviewedBy: adminUser.value?.email || 'Brigada do Café'
+  })
+  paymentRequests.value = paymentRequests.value.map((item) => (
+    item.id === request.id
+      ? { ...item, status: 'REJECTED', reviewedAt: new Date().toISOString(), reviewedBy: adminUser.value?.email }
+      : item
+  ))
+  showToast(`${request.name} recusado. O Pix não convenceu o conselho do coador.`, 'error')
+  playErrorSound()
 }
 
 async function addCafeUser() {
-  if (!isCoffeeMaster.value) return showToast('Somente o Mestre do Café pode convocar novos aprendizes.', 'error')
+  if (!isCoffeeMaster.value) {
+    playErrorSound()
+    return showToast('Somente o Mestre do Café pode convocar novos aprendizes.', 'error')
+  }
 
   const email = cafeUserForm.email.trim()
   const password = cafeUserForm.password
-  if (!email || !password) return showToast('Informe e-mail e senha inicial do novo usuário.', 'error')
+  if (!email || !password) {
+    playErrorSound()
+    return showToast('Informe e-mail e senha inicial do novo usuário.', 'error')
+  }
 
   try {
     adminAuthLoading.value = true
@@ -291,8 +548,10 @@ async function addCafeUser() {
     cafeUserForm.password = ''
     cafeUserForm.role = 'APPRENTICE'
     showToast(`${roleLabel(created.role)} cadastrado com sucesso.`, 'success')
+    playPowerUpSound()
   } catch (error) {
     showToast(authErrorMessage(error), 'error')
+    playErrorSound()
   } finally {
     adminAuthLoading.value = false
   }
@@ -309,6 +568,7 @@ async function saveAdminSettings() {
   saveLocalState()
   await saveSettings({ ...settings })
   showToast('Novas configurações salvas com sucesso!', 'success')
+  playSaveSound()
 }
 
 async function addMemberFromAdmin() {
@@ -320,6 +580,7 @@ async function addMemberFromAdmin() {
   adminNewMember.name = ''
   adminNewMember.dept = ''
   showToast(`${name} entrou na lista do café.`, 'success')
+  playJoinSound()
 }
 
 async function handleJoinSubmit() {
@@ -328,6 +589,7 @@ async function handleJoinSubmit() {
   if (members.value.some((member) => member.name.toLowerCase() === name.toLowerCase())) {
     showToast('Você já está na vaquinha deste mês!', 'info')
     joinModalOpen.value = false
+    playBumpSound()
     return
   }
   const member = { id: Date.now().toString(), name, dept: joinForm.dept.trim() || 'Geral', status: 'UNPAID', paidAt: null }
@@ -337,6 +599,7 @@ async function handleJoinSubmit() {
   joinForm.dept = ''
   joinModalOpen.value = false
   showToast('Entrada confirmada. Agora só falta pagar o café!', 'success')
+  playJoinSound()
 }
 
 async function resetMonthlyPayments() {
@@ -345,11 +608,13 @@ async function resetMonthlyPayments() {
   await saveMembers(members.value)
   selectedReceipt.value = null
   showToast('Pagamentos reiniciados para o novo mês.', 'info')
+  playResetSound()
 }
 
 function copyPixKey() {
   navigator.clipboard?.writeText(settings.pixKey)
   showToast('Chave Pix copiada!', 'success')
+  playCoinSound()
 }
 
 function generateExcuse() {
@@ -363,6 +628,7 @@ function triggerHornSound() {
 }
 
 function printReceipt() {
+  playPrintSound()
   window.print()
 }
 
@@ -374,26 +640,55 @@ function showToast(message, type = 'info') {
   }, 3200)
 }
 
-function tone(frequency, duration, type = 'sine') {
+let audioContext
+
+function getAudioContext() {
   const AudioContext = window.AudioContext || window.webkitAudioContext
-  if (!AudioContext) return
-  const ctx = new AudioContext()
+  if (!AudioContext) return null
+  if (!audioContext) audioContext = new AudioContext()
+  return audioContext
+}
+
+function tone(frequency, duration, type = 'sine', delay = 0, volume = 0.045) {
+  const ctx = getAudioContext()
+  if (!ctx) return
   const oscillator = ctx.createOscillator()
   const gain = ctx.createGain()
+  const startAt = ctx.currentTime + delay
+  const endAt = startAt + duration
+
   oscillator.type = type
   oscillator.frequency.value = frequency
   oscillator.connect(gain)
   gain.connect(ctx.destination)
-  gain.gain.setValueAtTime(0.04, ctx.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
-  oscillator.start()
-  oscillator.stop(ctx.currentTime + duration)
+  gain.gain.setValueAtTime(0.001, startAt)
+  gain.gain.linearRampToValueAtTime(volume, startAt + 0.01)
+  gain.gain.exponentialRampToValueAtTime(0.001, endAt)
+  oscillator.start(startAt)
+  oscillator.stop(endAt + 0.02)
 }
 
-function playClickSound() { tone(260, 0.05, 'square') }
-function playSuccessSound() { tone(620, 0.12, 'triangle') }
-function playStampSound() { tone(140, 0.08, 'sawtooth') }
-function playHornSound() { tone(180, 0.25, 'square') }
+function playSequence(notes, type = 'square', volume = 0.045) {
+  notes.forEach(([frequency, duration, delay]) => tone(frequency, duration, type, delay, volume))
+}
+
+function playClickSound() { playSequence([[260, 0.035, 0], [390, 0.035, 0.035]], 'square', 0.035) }
+function playOpenSound() { playSequence([[330, 0.04, 0], [494, 0.05, 0.045]], 'square', 0.035) }
+function playSuccessSound() { playSequence([[523, 0.07, 0], [659, 0.08, 0.075], [784, 0.12, 0.16]], 'triangle', 0.05) }
+function playAdminUnlockSound() { playSequence([[392, 0.06, 0], [523, 0.06, 0.07], [659, 0.07, 0.14], [988, 0.1, 0.23]], 'square', 0.04) }
+function playLockSound() { playSequence([[330, 0.06, 0], [247, 0.08, 0.07], [165, 0.1, 0.16]], 'square', 0.04) }
+function playErrorSound() { playSequence([[196, 0.08, 0], [147, 0.08, 0.085]], 'sawtooth', 0.035) }
+function playBumpSound() { playSequence([[180, 0.05, 0], [140, 0.06, 0.055]], 'square', 0.03) }
+function playStampSound() { playSequence([[130, 0.05, 0], [220, 0.04, 0.055], [440, 0.06, 0.1]], 'sawtooth', 0.035) }
+function playHornSound() { playSequence([[180, 0.12, 0], [150, 0.12, 0.13], [180, 0.18, 0.26]], 'square', 0.05) }
+function playCoinSound() { playSequence([[988, 0.06, 0], [1319, 0.11, 0.07]], 'square', 0.035) }
+function playSaveSound() { playSequence([[440, 0.06, 0], [660, 0.08, 0.07]], 'triangle', 0.04) }
+function playJoinSound() { playSequence([[330, 0.06, 0], [392, 0.06, 0.065], [494, 0.1, 0.135]], 'square', 0.04) }
+function playPowerUpSound() { playSequence([[262, 0.055, 0], [330, 0.055, 0.06], [392, 0.055, 0.12], [523, 0.12, 0.19]], 'square', 0.04) }
+function playMailSound() { playSequence([[659, 0.05, 0], [523, 0.05, 0.055], [784, 0.09, 0.12]], 'triangle', 0.04) }
+function playResetSound() { playSequence([[523, 0.055, 0], [392, 0.055, 0.06], [262, 0.055, 0.12], [131, 0.12, 0.2]], 'square', 0.035) }
+function playRemoveSound() { playSequence([[247, 0.05, 0], [165, 0.08, 0.06]], 'sawtooth', 0.03) }
+function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [440, 0.04, 0.1], [330, 0.06, 0.16]], 'square', 0.025) }
 </script>
 
 <template>
@@ -457,7 +752,7 @@ function playHornSound() { tone(180, 0.25, 'square') }
               MÊS ATUAL: <span>{{ settings.month }}</span>
             </div>
             <h2 class="text-xl font-black text-espresso mb-1">Chave Pix do Café</h2>
-            <p class="text-xs text-mocha mb-4 font-medium">Escaneie o QR Code ou copie a chave abaixo</p>
+            <p class="text-xs text-mocha mb-4 font-medium">Escaneie o QR Code com valor ou copie a chave abaixo</p>
             <div class="relative group my-2">
               <div class="w-48 h-48 bg-white p-3 rounded-2xl comic-border shadow-comic flex items-center justify-center">
                 <img :src="qrUrl" alt="QR Code Pix Café" class="w-full h-full object-contain">
@@ -510,9 +805,9 @@ function playHornSound() { tone(180, 0.25, 'square') }
                   <Icon icon="pixelarticons:info-box" class="text-caramel text-lg mt-0.5 shrink-0" />
                   <p>Ao clicar abaixo, você declara formalmente que transferiu a cota e tem total consciência de que café requentado após as 16h é de sua inteira responsabilidade.</p>
                 </div>
-                <button type="submit" class="w-full bg-mint hover:bg-emerald-600 text-foam font-black text-lg py-4 px-6 rounded-2xl comic-border shadow-comic hover:shadow-comic-hover active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-3">
-                  <Icon icon="pixelarticons:check-double" class="text-2xl" /> CONFIRMAR QUE PAGUEI O CAFÉ!
-                </button>
+                <CafeButton type="submit" variant="mint" size="lg" block icon="pixelarticons:check-double">
+                  ENVIAR PARA A PERÍCIA DO PIX!
+                </CafeButton>
               </form>
             </div>
             <div class="mt-8 pt-4 border-t-2 border-espresso/20">
@@ -529,21 +824,15 @@ function playHornSound() { tone(180, 0.25, 'square') }
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="bg-foam p-4 rounded-2xl comic-border shadow-comic flex items-start gap-3">
-            <div class="feature-icon feature-icon--coffee">
-              <Icon icon="pixelarticons:coffee-alt" class="feature-icon__main" />
-            </div>
+            <FeatureIcon icon="pixelarticons:coffee-alt" tone="coffee" />
             <div><h4 class="font-bold text-sm text-espresso">Regra nº 1</h4><p class="text-xs text-mocha font-medium">Fez o último gole? Coloque mais água e pó ou corra para se esconder.</p></div>
           </div>
           <div class="bg-foam p-4 rounded-2xl comic-border shadow-comic flex items-start gap-3">
-            <div class="feature-icon feature-icon--debt">
-              <Icon icon="pixelarticons:wallet" class="feature-icon__main" />
-            </div>
+            <FeatureIcon icon="pixelarticons:wallet" tone="debt" />
             <div><h4 class="font-bold text-sm text-espresso">Caloteiros</h4><p class="text-xs text-mocha font-medium">Quem consome sem pagar aciona a maldição da garrafa morna e sem açúcar.</p></div>
           </div>
           <div class="bg-foam p-4 rounded-2xl comic-border shadow-comic flex items-start gap-3">
-            <div class="feature-icon feature-icon--proof">
-              <Icon icon="pixelarticons:receipt" class="feature-icon__main" />
-            </div>
+            <FeatureIcon icon="pixelarticons:receipt" tone="proof" />
             <div><h4 class="font-bold text-sm text-espresso">Comprovação</h4><p class="text-xs text-mocha font-medium">Emita sua segunda via a qualquer hora na aba "Segundas Vias" para esfregar no RH.</p></div>
           </div>
         </div>
@@ -561,26 +850,23 @@ function playHornSound() { tone(180, 0.25, 'square') }
                 <input v-model="searchMember" type="text" placeholder="Buscar colega..." class="w-full bg-foam text-xs font-bold pl-8 pr-3 py-2 rounded-xl comic-border focus:outline-none">
                 <Icon icon="pixelarticons:search" class="absolute left-2.5 top-2.5 text-sm text-mocha/50" />
               </div>
-              <select v-model="filterStatus" class="bg-foam text-xs font-bold px-3 py-2 rounded-xl comic-border focus:outline-none cursor-pointer">
-                <option value="ALL">Todos os Colegas</option>
-                <option value="PAID">Quitados (Paga-Lanches)</option>
-                <option value="UNPAID">Desidratados (Pendentes)</option>
-              </select>
-              <button @click="joinModalOpen = true" class="bg-caramel hover:bg-amber-600 text-espresso font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-1">
-                <Icon icon="pixelarticons:plus" class="text-base" /> Entrar Este Mês
-              </button>
+              <CafeSelect v-model="filterStatus" :options="statusOptions" class="sm:w-56" />
+              <CafeButton variant="caramel" size="sm" icon="pixelarticons:plus" @click="openJoinModal">
+                Entrar Este Mês
+              </CafeButton>
             </div>
           </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <div class="bg-foam p-3 rounded-xl comic-border text-center"><span class="text-[10px] font-bold text-mocha uppercase block">Total Inscritos</span><span class="text-xl font-black text-espresso font-mono">{{ members.length }}</span></div>
-            <div class="bg-mint/20 p-3 rounded-xl comic-border text-center"><span class="text-[10px] font-bold text-emerald-800 uppercase flex items-center justify-center gap-1"><Icon icon="pixelarticons:coffee" /> Quitados</span><span class="text-xl font-black text-emerald-700 font-mono">{{ paidMembers.length }}</span></div>
-            <div class="bg-chili/20 p-3 rounded-xl comic-border text-center"><span class="text-[10px] font-bold text-red-800 uppercase flex items-center justify-center gap-1"><Icon icon="pixelarticons:robot-face-sad" /> Pendentes</span><span class="text-xl font-black text-red-700 font-mono">{{ unpaidCount }}</span></div>
-            <div class="bg-caramel/20 p-3 rounded-xl comic-border text-center"><span class="text-[10px] font-bold text-amber-900 uppercase block">Arrecadado</span><span class="text-xl font-black text-amber-900 font-mono">{{ formatMoney(totalRaised) }}</span></div>
+            <StatTile label="Total Inscritos" :value="members.length" tone="foam" />
+            <StatTile label="Quitados" :value="paidMembers.length" icon="pixelarticons:coffee" tone="mint" />
+            <StatTile label="Em Análise" :value="pendingMembers.length" icon="pixelarticons:hourglass" tone="caramel" />
+            <StatTile label="Arrecadado" :value="formatMoney(totalRaised)" tone="caramel" />
           </div>
 
-          <div class="overflow-x-auto rounded-2xl comic-border bg-foam">
-            <table class="w-full text-left border-collapse">
+          <div class="member-list-shell rounded-2xl comic-border bg-foam">
+            <div class="member-list-scroll">
+              <table class="member-list-table w-full text-left">
               <thead>
                 <tr class="bg-roast text-foam text-xs font-mono uppercase border-b-2 border-espresso">
                   <th class="p-3">Colega de Trabalho</th><th class="p-3">Setor</th><th class="p-3 text-center">Status do Café</th><th class="p-3 text-center">Data Pagto</th><th class="p-3 text-right">Ação / Comprovante</th>
@@ -590,26 +876,28 @@ function playHornSound() { tone(180, 0.25, 'square') }
                 <tr v-if="filteredMembers.length === 0"><td colspan="5" class="p-6 text-center text-mocha font-bold italic">Nenhum participante encontrado... O café está solitário!</td></tr>
                 <tr v-for="member in filteredMembers" :key="member.id" class="hover:bg-crema/50 transition-colors">
                   <td class="p-3 font-bold text-espresso flex items-center gap-2">
-                    <span class="w-8 h-8 rounded-full comic-border flex items-center justify-center text-base" :class="member.status === 'PAID' ? 'bg-mint/20 text-mint' : 'bg-chili/20 text-chili'"><Icon :icon="member.status === 'PAID' ? 'pixelarticons:coffee' : 'pixelarticons:robot-face-sad'" /></span>{{ member.name }}
+                    <span class="w-8 h-8 rounded-full comic-border flex items-center justify-center text-base" :class="memberAvatarClass(member.status)"><Icon :icon="memberStatusIcon(member.status)" /></span>{{ member.name }}
                   </td>
                   <td class="p-3 text-xs font-semibold text-mocha">{{ member.dept || 'Geral' }}</td>
-                  <td class="p-3 text-center"><span class="inline-block text-xs font-black px-3 py-1 rounded-full comic-border" :class="member.status === 'PAID' ? 'bg-mint text-foam' : 'bg-chili text-foam'">{{ member.status === 'PAID' ? 'CAFEINADO (QUITADO)' : 'DESIDRATADO (PENDENTE)' }}</span></td>
+                  <td class="p-3 text-center"><span class="inline-block text-xs font-black px-3 py-1 rounded-full comic-border" :class="memberStatusClass(member.status)">{{ memberStatusLabel(member.status) }}</span></td>
                   <td class="p-3 text-center text-xs font-mono font-bold text-espresso">{{ member.paidAt || '--/--/----' }}</td>
                   <td class="p-3 text-right">
                     <div class="flex items-center justify-end gap-1">
                       <button v-if="member.status === 'PAID'" @click="viewUserReceipt(member.name)" title="Ver Segunda Via" class="bg-caramel hover:bg-amber-600 text-espresso text-xs font-bold p-1.5 px-2.5 rounded-lg comic-border shadow-comic inline-flex items-center gap-1"><Icon icon="pixelarticons:receipt" /> Recibo</button>
-                      <button v-else @click="markAsPaidFromList(member.id)" title="Marcar como Pago" class="bg-mint hover:bg-emerald-600 text-foam text-xs font-bold p-1.5 px-2.5 rounded-lg comic-border shadow-comic inline-flex items-center gap-1"><Icon icon="pixelarticons:check" /> Paguei</button>
+                      <span v-else-if="member.status === 'PENDING'" class="bg-caramel/20 text-caramel text-xs font-black p-1.5 px-2.5 rounded-lg comic-border inline-flex items-center gap-1"><Icon icon="pixelarticons:hourglass" /> Em análise</span>
+                      <button v-else @click="markAsPaidFromList(member.id)" title="Enviar para conferência" class="bg-mint hover:bg-emerald-600 text-foam text-xs font-bold p-1.5 px-2.5 rounded-lg comic-border shadow-comic inline-flex items-center gap-1"><Icon icon="pixelarticons:check" /> Já paguei</button>
                       <button @click="removeMember(member.id)" title="Sair da vaquinha neste mês" class="bg-roast hover:bg-espresso text-latte text-xs font-bold p-1.5 px-2 rounded-lg comic-border shadow-comic"><Icon icon="pixelarticons:user-minus" /></button>
                     </div>
                   </td>
                 </tr>
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
 
           <div class="mt-6 bg-latte/40 p-4 rounded-2xl comic-border flex flex-col sm:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-3"><div class="text-3xl text-mocha"><Icon icon="pixelarticons:mood-sad" /></div><div><h4 class="text-xs font-bold uppercase text-espresso">Gerador Automático de Desculpas de Caloteiro</h4><p class="text-xs text-mocha italic">{{ funnyExcuse }}</p></div></div>
-            <button @click="generateExcuse" class="bg-mocha hover:bg-espresso text-foam font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic whitespace-nowrap inline-flex items-center gap-1"><Icon icon="pixelarticons:dice" /> Gerar Outra Desculpa</button>
+            <CafeButton variant="mocha" size="sm" icon="pixelarticons:dice" @click="generateExcuse">Gerar Outra Desculpa</CafeButton>
           </div>
         </div>
       </section>
@@ -624,7 +912,7 @@ function playHornSound() { tone(180, 0.25, 'square') }
             <label class="block text-xs font-bold text-espresso uppercase mb-2">Digite o Nome do Colega Quitado:</label>
             <div class="flex gap-2">
               <input v-model="receiptSearch" type="text" placeholder="Ex: Carlinhos do T.I." class="w-full bg-crema text-espresso font-bold px-4 py-2.5 rounded-xl comic-border focus:outline-none">
-              <button @click="searchAndShowReceipt" class="bg-caramel hover:bg-amber-600 text-espresso font-black text-xs px-5 py-2.5 rounded-xl comic-border shadow-comic whitespace-nowrap inline-flex items-center gap-1"><Icon icon="pixelarticons:search" /> Gerar Recibo</button>
+              <CafeButton variant="caramel" size="md" icon="pixelarticons:search" @click="searchAndShowReceipt">Gerar Recibo</CafeButton>
             </div>
           </div>
           <div v-if="selectedReceipt">
@@ -644,7 +932,7 @@ function playHornSound() { tone(180, 0.25, 'square') }
               </div>
               <div class="bg-latte/50 p-3 rounded-xl comic-border text-[11px] font-sans font-medium text-mocha mb-6"><strong>PARECER TÉCNICO:</strong> O portador deste documento possui passe livre para até 4 xícaras diárias de café puro ou com leite. Proibido colocar açúcar no bule coletivo. Válido até o último dia do mês corrente.</div>
               <div class="text-center pt-2 border-t-2 border-dashed border-espresso/30"><div class="font-mono text-2xl font-black tracking-widest text-espresso mb-1 select-none">||||| | |||| ||| |||||| | ||||| ||| |||</div><p class="text-[9px] font-mono text-mocha uppercase">AUTENTICAÇÃO MECÂNICA DA CAFETEIRA DA FIRMA</p></div>
-              <div class="mt-6 flex justify-end gap-2 print:hidden"><button @click="printReceipt" class="bg-mint hover:bg-emerald-600 text-foam font-bold text-xs px-4 py-2.5 rounded-xl comic-border shadow-comic flex items-center gap-2"><Icon icon="pixelarticons:printer" /> Imprimir / Salvar PDF</button></div>
+              <div class="mt-6 flex justify-end gap-2 print:hidden"><CafeButton variant="mint" size="md" icon="pixelarticons:printer" @click="printReceipt">Imprimir / Salvar PDF</CafeButton></div>
             </div>
           </div>
         </div>
@@ -658,7 +946,9 @@ function playHornSound() { tone(180, 0.25, 'square') }
           <form @submit.prevent="unlockAdmin" class="space-y-3 pt-2">
             <input v-model="adminCredentials.email" type="email" autocomplete="email" placeholder="E-mail do Mestre do Café" required class="w-full bg-foam text-espresso text-center font-mono font-bold py-3 rounded-xl comic-border focus:outline-none">
             <input v-model="adminCredentials.password" type="password" autocomplete="current-password" placeholder="Senha secreta" required class="w-full bg-foam text-espresso text-center font-mono font-bold py-3 rounded-xl comic-border focus:outline-none">
-            <button type="submit" :disabled="adminAuthLoading" class="w-full bg-caramel hover:bg-amber-600 disabled:opacity-70 text-espresso font-black py-3 rounded-xl comic-border shadow-comic hover:shadow-comic-hover inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:unlock" class="text-xl" /> {{ adminAuthLoading ? 'CONFERINDO CREDENCIAL...' : 'ENTRAR NO PAINEL' }}</button>
+            <CafeButton type="submit" variant="caramel" size="md" block icon="pixelarticons:unlock" :disabled="adminAuthLoading">
+              {{ adminAuthLoading ? 'CONFERINDO CREDENCIAL...' : 'ENTRAR NO PAINEL' }}
+            </CafeButton>
           </form>
           <button type="button" @click="recoverAdminPassword" :disabled="adminAuthLoading" class="text-[11px] text-mocha hover:text-espresso font-bold underline decoration-2 underline-offset-2 disabled:opacity-60">
             Esqueci a senha, mandar link por e-mail
@@ -667,19 +957,52 @@ function playHornSound() { tone(180, 0.25, 'square') }
 
         <div v-else class="space-y-6">
           <div class="bg-roast text-foam p-6 rounded-3xl comic-border-lg shadow-comic-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div><span class="bg-caramel text-espresso text-[10px] font-black px-2.5 py-0.5 rounded-full comic-border uppercase">{{ roleLabel(adminUser?.role) }} Ativo</span><h2 class="text-2xl font-black text-foam mt-1 flex items-center gap-2">Painel do Café <Icon icon="pixelarticons:crown" class="text-caramel" /></h2><p class="text-xs text-latte">Conectado como <span class="font-mono font-bold text-caramel">{{ adminUser?.email }}</span>. {{ isCoffeeMaster ? 'Você comanda o bule inteiro.' : 'Você ajuda a manter a vaquinha em ordem.' }}</p></div>
-            <button @click="lockAdmin" class="bg-chili hover:bg-red-600 text-foam font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic inline-flex items-center gap-1"><Icon icon="pixelarticons:lock" /> Sair do Admin</button>
+            <div><span class="bg-caramel text-espresso text-[10px] font-black px-2.5 py-0.5 rounded-full comic-border uppercase">{{ roleLabel(adminUser?.role) }} Ativo</span><h2 class="text-2xl font-black text-foam mt-1 flex items-center gap-2">Painel do Café <Icon icon="pixelarticons:crown" class="text-caramel" /><span v-if="pendingPaymentRequests.length" class="bg-chili text-foam text-xs px-2 py-0.5 rounded-full comic-border inline-flex items-center gap-1"><Icon icon="pixelarticons:bell-ring" /> {{ pendingPaymentRequests.length }}</span></h2><p class="text-xs text-latte">Conectado como <span class="font-mono font-bold text-caramel">{{ adminUser?.email }}</span>. {{ isCoffeeMaster ? 'Você comanda o bule inteiro.' : 'Você ajuda a manter a vaquinha em ordem.' }}</p></div>
+            <CafeButton variant="chili" size="sm" icon="pixelarticons:lock" @click="lockAdmin">Sair do Admin</CafeButton>
           </div>
+
+          <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b-2 border-espresso/20 pb-3">
+              <div>
+                <h3 class="text-lg font-black text-espresso flex items-center gap-2"><Icon icon="pixelarticons:bell-ring" class="text-caramel text-2xl" /> Notificações da Brigada</h3>
+                <p class="text-xs text-mocha font-medium">Pedidos de "já paguei" aguardando o carimbo sagrado do coador.</p>
+              </div>
+              <CafeButton variant="foam" size="sm" icon="pixelarticons:arrow-up-wide-narrow" @click="refreshPaymentRequests">Atualizar fila</CafeButton>
+            </div>
+
+            <div v-if="pendingPaymentRequests.length === 0" class="bg-foam rounded-2xl comic-border p-4 text-xs font-bold text-mocha flex items-center gap-2">
+              <Icon icon="pixelarticons:coffee" class="text-caramel text-xl" />
+              Nenhum Pix batendo na porta. A paz temporária do RH foi decretada.
+            </div>
+
+            <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div v-for="request in pendingPaymentRequests" :key="request.id" class="bg-foam rounded-2xl comic-border p-4 shadow-comic">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="font-black text-espresso flex items-center gap-2"><Icon icon="pixelarticons:receipt" class="text-caramel text-xl" /> {{ request.name }}</p>
+                    <p class="text-[11px] text-mocha font-bold">{{ request.dept || 'Geral' }} • {{ request.month }} • {{ formatMoney(request.amount) }}</p>
+                    <p class="text-[10px] text-mocha/80 font-mono mt-1">Protocolo: {{ request.id.slice(-8) }}</p>
+                  </div>
+                  <span class="bg-caramel text-espresso text-[10px] font-black px-2 py-1 rounded-full comic-border inline-flex items-center gap-1"><Icon icon="pixelarticons:hourglass" /> Perícia</span>
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                  <CafeButton variant="mint" size="sm" block icon="pixelarticons:check" @click="approvePaymentRequest(request)">Aprovar Pix</CafeButton>
+                  <CafeButton variant="chili" size="sm" block icon="pixelarticons:close" @click="rejectPaymentRequest(request)">Recusar</CafeButton>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl space-y-4">
               <h3 class="text-lg font-black text-espresso border-b-2 border-espresso/20 pb-2 flex items-center gap-2"><Icon icon="pixelarticons:settings-cog" class="text-caramel text-2xl" /> Parâmetros da Cota</h3>
               <form v-if="isCoffeeMaster" @submit.prevent="saveAdminSettings" class="space-y-4">
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Mês / Ano de Referência</label><input v-model="adminForm.month" type="text" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm"></div>
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Valor da Mensalidade (R$)</label><input v-model="adminForm.monthlyFee" type="number" step="0.5" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm font-mono"></div>
-                <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Tipo da Chave Pix</label><select v-model="adminForm.pixType" class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm"><option value="E-mail">E-mail</option><option value="CPF / CNPJ">CPF / CNPJ</option><option value="Celular">Celular</option><option value="Chave Aleatória">Chave Aleatória</option></select></div>
+                <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Tipo da Chave Pix</label><CafeSelect v-model="adminForm.pixType" :options="pixTypeOptions" /></div>
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Chave Pix para Recebimento</label><input v-model="adminForm.pixKey" type="text" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm font-mono"></div>
                 <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Nome do Titular da Conta</label><input v-model="adminForm.pixOwner" type="text" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm"></div>
-                <button type="submit" class="w-full bg-mint hover:bg-emerald-600 text-foam font-black text-sm py-3 rounded-xl comic-border shadow-comic inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:checkbox-on" class="text-xl" /> SALVAR ALTERAÇÕES</button>
+                <CafeButton type="submit" variant="mint" size="md" block icon="pixelarticons:checkbox-on">SALVAR ALTERAÇÕES</CafeButton>
               </form>
               <div v-else class="bg-foam p-4 rounded-2xl comic-border text-xs text-mocha font-bold">
                 Configurações de Pix, mês e valor são território exclusivo do Mestre do Café.
@@ -689,8 +1012,8 @@ function playHornSound() { tone(180, 0.25, 'square') }
               <div>
                 <h3 class="text-lg font-black text-espresso border-b-2 border-espresso/20 pb-2 flex items-center gap-2"><Icon icon="pixelarticons:sliders" class="text-caramel text-2xl" /> Ações Rápidas do Gestor</h3>
                 <div class="space-y-3 mt-4">
-                  <div class="bg-foam p-3 rounded-xl comic-border"><h4 class="text-xs font-bold text-espresso flex items-center gap-1"><Icon icon="pixelarticons:volume-vibrate" class="text-chili text-lg" /> Cobrador Automático</h4><p class="text-[11px] text-mocha mb-2">Dispara um aviso sonoro engraçado e destaca quem ainda não pagou.</p><button @click="triggerHornSound" class="w-full bg-caramel hover:bg-amber-600 text-espresso font-bold text-xs py-2 rounded-lg comic-border shadow-comic inline-flex items-center justify-center gap-1"><Icon icon="pixelarticons:volume-3" /> TOCAR SIRENE DA COBRANÇA</button></div>
-                  <div class="bg-foam p-3 rounded-xl comic-border"><h4 class="text-xs font-bold text-espresso flex items-center gap-1"><Icon icon="pixelarticons:calendar-alert" class="text-caramel text-lg" /> Novo Mês (Zerar Pagamentos)</h4><p class="text-[11px] text-mocha mb-2">Mantém a lista de pessoas, mas marca todos como "Pendente" para o próximo mês.</p><button @click="resetMonthlyPayments" class="w-full bg-roast hover:bg-espresso text-latte font-bold text-xs py-2 rounded-lg comic-border shadow-comic inline-flex items-center justify-center gap-1"><Icon icon="pixelarticons:arrow-up-wide-narrow" /> REINICIAR PAGAMENTOS DO MÊS</button></div>
+                  <div class="bg-foam p-3 rounded-xl comic-border"><h4 class="text-xs font-bold text-espresso flex items-center gap-1"><Icon icon="pixelarticons:volume-vibrate" class="text-chili text-lg" /> Cobrador Automático</h4><p class="text-[11px] text-mocha mb-2">Dispara um aviso sonoro engraçado e destaca quem ainda não pagou.</p><CafeButton variant="caramel" size="sm" block icon="pixelarticons:volume-3" @click="triggerHornSound">TOCAR SIRENE DA COBRANÇA</CafeButton></div>
+                  <div class="bg-foam p-3 rounded-xl comic-border"><h4 class="text-xs font-bold text-espresso flex items-center gap-1"><Icon icon="pixelarticons:calendar-alert" class="text-caramel text-lg" /> Novo Mês (Zerar Pagamentos)</h4><p class="text-[11px] text-mocha mb-2">Mantém a lista de pessoas, mas marca todos como "Pendente" para o próximo mês.</p><CafeButton variant="roast" size="sm" block icon="pixelarticons:arrow-up-wide-narrow" @click="resetMonthlyPayments">REINICIAR PAGAMENTOS DO MÊS</CafeButton></div>
                 </div>
               </div>
               <div class="bg-foam p-4 rounded-2xl comic-border mt-4">
@@ -698,7 +1021,7 @@ function playHornSound() { tone(180, 0.25, 'square') }
                 <form @submit.prevent="addMemberFromAdmin" class="space-y-2">
                   <input v-model="adminNewMember.name" type="text" placeholder="Nome do Colega" required class="w-full bg-crema text-xs font-bold p-2 rounded-lg comic-border">
                   <input v-model="adminNewMember.dept" type="text" placeholder="Setor (ex: RH)" class="w-full bg-crema text-xs font-bold p-2 rounded-lg comic-border">
-                  <button type="submit" class="w-full bg-mint text-foam font-bold text-xs py-2 rounded-lg comic-border shadow-comic inline-flex items-center justify-center gap-1"><Icon icon="pixelarticons:user-plus" /> Inserir na Lista</button>
+                  <CafeButton type="submit" variant="mint" size="sm" block icon="pixelarticons:user-plus">Inserir na Lista</CafeButton>
                 </form>
               </div>
             </div>
@@ -710,9 +1033,7 @@ function playHornSound() { tone(180, 0.25, 'square') }
                 <h3 class="text-lg font-black text-espresso flex items-center gap-2"><Icon icon="pixelarticons:users" class="text-caramel text-2xl" /> Brigada do Café</h3>
                 <p class="text-xs text-mocha font-medium">Mestres administram usuários e configurações. Aprendizes ajudam na rotina da vaquinha.</p>
               </div>
-              <button @click="refreshCafeUsers" class="bg-foam hover:bg-latte text-espresso font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic inline-flex items-center gap-1">
-                <Icon icon="pixelarticons:arrow-up-wide-narrow" /> Atualizar lista
-              </button>
+              <CafeButton variant="foam" size="sm" icon="pixelarticons:arrow-up-wide-narrow" @click="refreshCafeUsers">Atualizar lista</CafeButton>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -732,13 +1053,10 @@ function playHornSound() { tone(180, 0.25, 'square') }
                 <form @submit.prevent="addCafeUser" class="space-y-3">
                   <input v-model="cafeUserForm.email" type="email" autocomplete="off" placeholder="E-mail do aprendiz ou mestre" required class="w-full bg-crema text-xs font-bold p-2.5 rounded-lg comic-border">
                   <input v-model="cafeUserForm.password" type="password" autocomplete="new-password" placeholder="Senha inicial" required class="w-full bg-crema text-xs font-bold p-2.5 rounded-lg comic-border">
-                  <select v-model="cafeUserForm.role" class="w-full bg-crema text-xs font-bold p-2.5 rounded-lg comic-border">
-                    <option value="APPRENTICE">Aprendiz do Café</option>
-                    <option value="MASTER">Mestre do Café</option>
-                  </select>
-                  <button type="submit" :disabled="adminAuthLoading" class="w-full bg-caramel hover:bg-amber-600 disabled:opacity-70 text-espresso font-black text-xs py-3 rounded-xl comic-border shadow-comic inline-flex items-center justify-center gap-2">
-                    <Icon icon="pixelarticons:user-plus" class="text-lg" /> CADASTRAR NA BRIGADA
-                  </button>
+                  <CafeSelect v-model="cafeUserForm.role" :options="cafeRoleOptions" />
+                  <CafeButton type="submit" variant="caramel" size="md" block icon="pixelarticons:user-plus" :disabled="adminAuthLoading">
+                    CADASTRAR NA BRIGADA
+                  </CafeButton>
                 </form>
               </div>
 
@@ -759,7 +1077,7 @@ function playHornSound() { tone(180, 0.25, 'square') }
         <form @submit.prevent="handleJoinSubmit" class="space-y-3 pt-2">
           <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Seu Nome *</label><input v-model="joinForm.name" type="text" required placeholder="Ex: Roberto do Almoxarifado" class="w-full bg-foam text-espresso font-bold p-3 rounded-xl comic-border focus:outline-none"></div>
           <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Seu Setor</label><input v-model="joinForm.dept" type="text" placeholder="Ex: Compras" class="w-full bg-foam text-espresso font-bold p-3 rounded-xl comic-border focus:outline-none"></div>
-          <button type="submit" class="w-full bg-mint text-foam font-black text-base py-3 rounded-xl comic-border shadow-comic inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:user-plus" class="text-xl" /> CONFIRMAR MINHA ENTRADA</button>
+          <CafeButton type="submit" variant="mint" size="md" block icon="pixelarticons:user-plus">CONFIRMAR MINHA ENTRADA</CafeButton>
         </form>
       </div>
     </div>
