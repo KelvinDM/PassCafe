@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-[#1F120B]">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Café Pass ☕ - Sistema Anti-Soneca da Firma</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Fredoka & Space Grotesk -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- JSZip e FileSaver para gerar o ZIP direto no navegador -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            espresso: '#1F120B',
+            roast: '#3D2314',
+            mocha: '#603813',
+            caramel: '#D97706',
+            crema: '#FBF3E8',
+            latte: '#EAD5C3',
+            foam: '#FFFDF9',
+            mint: '#10B981',
+            chili: '#EF4444'
+          },
+          fontFamily: {
+            sans: ['Fredoka', 'sans-serif'],
+            mono: ['Space Grotesk', 'monospace'],
+          },
+          boxShadow: {
+            'comic': '4px 4px 0px 0px #1F120B',
+            'comic-lg': '7px 7px 0px 0px #1F120B',
+            'comic-xl': '10px 10px 0px 0px #1F120B',
+            'comic-hover': '2px 2px 0px 0px #1F120B',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Fredoka', sans-serif;
+      background-color: #1F120B;
+      color: #1F120B;
+      background-image: radial-gradient(#3D2314 1.5px, transparent 1.5px);
+      background-size: 24px 24px;
+    }
+
+    .comic-border {
+      border: 3px solid #1F120B;
+    }
+
+    .comic-border-lg {
+      border: 4px solid #1F120B;
+    }
+
+    /* Efeito de vapor subindo na xícara */
+    @keyframes steam {
+      0% { transform: translateY(0) scaleX(1); opacity: 0; }
+      50% { opacity: 0.8; }
+      100% { transform: translateY(-20px) scaleX(1.5); opacity: 0; }
+    }
+
+    .steam-line {
+      animation: steam 2s infinite ease-out;
+    }
+    .steam-2 { animation-delay: 0.6s; }
+    .steam-3 { animation-delay: 1.2s; }
+
+    /* Efeito de carimbo no recibo */
+    .stamp-approved {
+      border: 4px dashed #10B981;
+      color: #10B981;
+      transform: rotate(-12deg);
+      animation: stampIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes stampIn {
+      0% { transform: scale(3) rotate(20deg); opacity: 0; }
+      100% { transform: scale(1) rotate(-12deg); opacity: 1; }
+    }
+
+    /* Ocultar barra de rolagem mantendo a navegação */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #printable-receipt, #printable-receipt * { visibility: visible; }
+      #printable-receipt {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white !important;
+        box-shadow: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col min-h-screen text-espresso selection:bg-caramel selection:text-foam">
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- HEADER NAVEGAÇÃO -->
+  <header class="bg-mocha text-crema comic-border-lg border-b-8 border-espresso shadow-comic-lg sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- LOGO COM ANIMAÇÃO DE CAFÉ -->
+      <div class="flex items-center gap-3 cursor-pointer select-none" onclick="switchTab('pay')">
+        <div class="relative w-12 h-12 bg-caramel rounded-2xl comic-border flex items-center justify-center shadow-comic">
+          <!-- Vapor -->
+          <span class="absolute -top-3 left-2 text-xs steam-line text-crema font-bold">~</span>
+          <span class="absolute -top-4 left-5 text-sm steam-line steam-2 text-crema font-bold">~</span>
+          <span class="absolute -top-3 right-2 text-xs steam-line steam-3 text-crema font-bold">~</span>
+          <i class="fa-solid fa-mug-hot text-2xl text-espresso"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-black tracking-wide text-foam flex items-center gap-2">
+            CAFÉ PASS <span class="bg-caramel text-espresso text-xs px-2 py-0.5 rounded-full comic-border font-mono">v2.0</span>
+          </h1>
+          <p class="text-xs text-latte font-medium hidden sm:block">"A lei do cafezinho da firma é clara: pagou, tomou!"</p>
+        </div>
+      </div>
+
+      <!-- BOTÕES DE ABAS + BOTÃO DE DOWNLOAD ZIP -->
+      <nav class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+        <button onclick="switchTab('pay')" id="nav-pay" class="nav-btn bg-caramel text-espresso font-bold px-4 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-2 text-sm whitespace-nowrap">
+          <i class="fa-solid fa-qrcode text-base"></i> Pagar Cota
+        </button>
+
+        <button onclick="switchTab('list')" id="nav-list" class="nav-btn bg-crema text-espresso font-bold px-4 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-2 text-sm whitespace-nowrap">
+          <i class="fa-solid fa-users text-base"></i> Lista dos Cafeinados
+        </button>
+
+        <button onclick="switchTab('receipts')" id="nav-receipts" class="nav-btn bg-crema text-espresso font-bold px-4 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-2 text-sm whitespace-nowrap">
+          <i class="fa-solid fa-receipt text-base"></i> Segundas Vias
+        </button>
+
+        <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn bg-roast text-latte font-bold px-3 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-2 text-sm whitespace-nowrap">
+          <i class="fa-solid fa-user-shield text-caramel"></i> Painel Admin
+        </button>
+
+        <!-- BOTÃO PARA BAIXAR CÓDIGO FONTE EM ZIP -->
+        <button onclick="downloadProjectZip()" class="bg-mint hover:bg-emerald-600 text-foam font-black px-3 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-2 text-sm whitespace-nowrap animate-pulse">
+          <i class="fa-solid fa-file-zipper text-base"></i> Baixar ZIP
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- BANNER DE HUMOR ROTATIVO -->
+  <div class="bg-caramel comic-border-lg border-t-0 border-x-0 py-1.5 px-4 text-center font-bold text-xs sm:text-sm text-espresso overflow-hidden shadow-sm">
+    <span id="funny-banner">☕ Dica do Dia: Café sem pagamento causa sonolência extrema no relatório de sexta-feira!</span>
+  </div>
+
+  <!-- CONTEÚDO PRINCIPAL CONTAINER -->
+  <main class="max-w-5xl mx-auto px-4 py-6 flex-1 w-full">
+
+    <!-- TAB 1: PAGAR COTA DO MÊS (SEM SENHA) -->
+    <section id="tab-pay" class="tab-content space-y-6">
+      
+      <!-- CARD PRINCIPAL DE PAGAMENTO -->
+      <div class="bg-crema rounded-3xl p-6 sm:p-8 comic-border-lg shadow-comic-xl grid grid-cols-1 md:grid-cols-12 gap-8 items-start relative overflow-hidden">
+        
+        <!-- Fundo decorativo -->
+        <div class="absolute -right-10 -bottom-10 text-mocha/10 text-9xl pointer-events-none select-none">
+          <i class="fa-solid fa-coffee"></i>
+        </div>
+
+        <!-- LADO ESQUERDO: INFOS DO PIX E QR CODE -->
+        <div class="md:col-span-5 bg-foam p-5 rounded-2xl comic-border shadow-comic text-center flex flex-col items-center">
+          <div class="inline-block bg-caramel/20 text-caramel text-xs font-black px-3 py-1 rounded-full comic-border mb-3 font-mono">
+            MÊS ATUAL: <span id="display-current-month">AGOSTO / 2026</span>
+          </div>
+          
+          <h2 class="text-xl font-black text-espresso mb-1">Chave Pix do Café</h2>
+          <p class="text-xs text-mocha mb-4 font-medium">Escaneie o QR Code ou copie a chave abaixo</p>
+
+          <!-- QR CODE DINÂMICO -->
+          <div class="relative group my-2">
+            <div id="qr-code-wrapper" class="w-48 h-48 bg-white p-3 rounded-2xl comic-border shadow-comic flex items-center justify-center">
+              <img id="qr-code-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=cafe-equipe@firma.com.br&color=1F120B&bgcolor=FFFDF9" alt="QR Code Pix Café" class="w-full h-full object-contain">
+            </div>
+            <div class="absolute inset-0 bg-espresso/80 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity p-4 text-center">
+              <p class="text-foam text-xs font-bold">Faça a transferência no app do seu banco e informe seu nome ao lado!</p>
+            </div>
+          </div>
+
+          <!-- VALOR DA MENSALIDADE -->
+          <div class="mt-4 bg-roast text-foam px-4 py-2 rounded-xl comic-border w-full flex items-center justify-between">
+            <span class="text-xs font-bold text-latte">Cota Mensal:</span>
+            <span id="display-monthly-fee" class="text-2xl font-black text-caramel font-mono">R$ 15,00</span>
+          </div>
+
+          <!-- CHAVE PIX COPIÁVEL -->
+          <div class="mt-3 w-full">
+            <p class="text-xs font-bold text-mocha text-left mb-1">Chave cadastrada (<span id="display-pix-type">E-mail</span>):</p>
+            <div class="flex items-center gap-1">
+              <input type="text" id="display-pix-key" readonly value="cafe-equipe@firma.com.br" class="w-full bg-latte/50 text-espresso text-xs font-mono font-bold p-2.5 rounded-lg comic-border focus:outline-none select-all">
+              <button onclick="copyPixKey()" title="Copiar Chave Pix" class="bg-caramel hover:bg-amber-600 text-espresso p-2.5 rounded-lg comic-border shadow-comic hover:shadow-comic-hover active:translate-x-0.5 active:translate-y-0.5 transition-all">
+                <i class="fa-solid fa-copy text-sm"></i>
+              </button>
+            </div>
+            <p class="text-[10px] text-mocha/80 text-left mt-1 font-medium">Titular: <span id="display-pix-owner" class="font-bold">Sr. Cafeeiro do RH</span></p>
+          </div>
+        </div>
+
+        <!-- LADO DIREITO: FORMULÁRIO RÁPIDO DE REGISTRO -->
+        <div class="md:col-span-7 flex flex-col justify-between h-full">
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <span class="bg-chili text-foam text-xs px-2 py-0.5 rounded-md comic-border font-bold uppercase tracking-wider">Sem Fila & Sem Senha</span>
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-black text-espresso mb-2">Já fez a transferência?</h2>
+            <p class="text-sm text-mocha font-medium mb-6">
+              Digite seu nome abaixo para registrar o pagamento na lista da firma e liberar sua <strong>Licença de Cafeína MENSAL</strong>!
+            </p>
+
+            <form id="pay-form" onsubmit="handleUserPayment(event)" class="space-y-4">
+              <div>
+                <label for="user-name-input" class="block text-xs font-bold text-espresso uppercase mb-1">Seu Nome / Apelido da Firma *</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-3 text-mocha/60"><i class="fa-solid fa-user"></i></span>
+                  <input type="text" id="user-name-input" required placeholder="Ex: Carlinhos do T.I. / Ana do Vendas" class="w-full bg-foam text-espresso font-bold pl-10 pr-4 py-3 rounded-xl comic-border focus:ring-4 focus:ring-caramel/30 focus:outline-none transition-all placeholder:font-normal placeholder:text-mocha/40">
+                </div>
+              </div>
+
+              <div>
+                <label for="user-dept-input" class="block text-xs font-bold text-espresso uppercase mb-1">Setor / Departamento (Opcional)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-3 text-mocha/60"><i class="fa-solid fa-building"></i></span>
+                  <input type="text" id="user-dept-input" placeholder="Ex: T.I., Marketing, Financeiro, RH" class="w-full bg-foam text-espresso font-bold pl-10 pr-4 py-3 rounded-xl comic-border focus:ring-4 focus:ring-caramel/30 focus:outline-none transition-all placeholder:font-normal placeholder:text-mocha/40">
+                </div>
+              </div>
+
+              <div class="bg-latte/60 p-3.5 rounded-xl comic-border text-xs text-mocha flex items-start gap-2.5">
+                <i class="fa-solid fa-circle-info text-caramel text-base mt-0.5"></i>
+                <p>Ao clicar abaixo, você declara formalmente que transferiu a cota e tem total consciência de que café requentado após as 16h é de sua inteira responsabilidade.</p>
+              </div>
+
+              <button type="submit" class="w-full bg-mint hover:bg-emerald-600 text-foam font-black text-lg py-4 px-6 rounded-2xl comic-border shadow-comic hover:shadow-comic-hover active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-3">
+                <i class="fa-solid fa-check-double text-xl"></i> CONFIRMAR QUE PAGUEI O CAFÉ!
+              </button>
+            </form>
+          </div>
+
+          <!-- BARRINHA DE METAS DA FIRMA -->
+          <div class="mt-8 pt-4 border-t-2 border-espresso/20">
+            <div class="flex justify-between items-center text-xs font-bold mb-1">
+              <span class="text-espresso">Meta do Mês (Pó de Café + Leite):</span>
+              <span id="goal-progress-text" class="text-caramel font-mono">0 / 0 Quitados</span>
+            </div>
+            <div class="w-full bg-foam rounded-full h-4 comic-border overflow-hidden p-0.5">
+              <div id="goal-progress-bar" class="bg-gradient-to-r from-caramel to-mint h-full rounded-full transition-all duration-500 w-0"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CARDS DE REGRAS DIVERTIDAS DA FIRMA -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-foam p-4 rounded-2xl comic-border shadow-comic flex items-start gap-3">
+          <div class="bg-caramel/20 p-3 rounded-xl text-caramel text-xl comic-border">☕</div>
+          <div>
+            <h4 class="font-bold text-sm text-espresso">Regra nº 1</h4>
+            <p class="text-xs text-mocha font-medium">Fez o último gole? Coloque mais água e pó ou corra para se esconder.</p>
+          </div>
+        </div>
+
+        <div class="bg-foam p-4 rounded-2xl comic-border shadow-comic flex items-start gap-3">
+          <div class="bg-chili/20 p-3 rounded-xl text-chili text-xl comic-border">🌵</div>
+          <div>
+            <h4 class="font-bold text-sm text-espresso">Caloteiros</h4>
+            <p class="text-xs text-mocha font-medium">Quem consome sem pagar aciona a maldição da garrafa morna e sem açúcar.</p>
+          </div>
+        </div>
+
+        <div class="bg-foam p-4 rounded-2xl comic-border shadow-comic flex items-start gap-3">
+          <div class="bg-mint/20 p-3 rounded-xl text-mint text-xl comic-border">📜</div>
+          <div>
+            <h4 class="font-bold text-sm text-espresso">Comprovação</h4>
+            <p class="text-xs text-mocha font-medium">Emita sua segunda via a qualquer hora na aba "Segundas Vias" para esfregar no RH.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: LISTA DE PARTICIPANTES (QUEM PAGOU X QUEM DEVE) -->
+    <section id="tab-list" class="tab-content hidden space-y-6">
+      
+      <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
+        <!-- CABEÇALHO DA TABELA + BUSCA E FILTROS -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 class="text-2xl font-black text-espresso flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-caramel"></i> Lista Oficial dos Cafeinados
+            </h2>
+            <p class="text-xs text-mocha font-medium">Mês de <span id="list-month-title" class="font-bold">Agosto/2026</span> • Todo mês a lista se renova!</p>
+          </div>
+
+          <!-- FILTROS -->
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="relative flex-1 sm:w-64">
+              <input type="text" id="search-member-input" oninput="renderMembersList()" placeholder="Buscar colega..." class="w-full bg-foam text-xs font-bold pl-8 pr-3 py-2 rounded-xl comic-border focus:outline-none">
+              <i class="fa-solid fa-search absolute left-2.5 top-2.5 text-xs text-mocha/50"></i>
+            </div>
+
+            <select id="filter-status-select" onchange="renderMembersList()" class="bg-foam text-xs font-bold px-3 py-2 rounded-xl comic-border focus:outline-none cursor-pointer">
+              <option value="ALL">Todos os Colegas</option>
+              <option value="PAID">☕ Quitados (Paga-Lanches)</option>
+              <option value="UNPAID">🌵 Desidratados (Pendentes)</option>
+            </select>
+
+            <button onclick="openJoinModal()" class="bg-caramel hover:bg-amber-600 text-espresso font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-1">
+              <i class="fa-solid fa-plus"></i> Entrar Este Mês
+            </button>
+          </div>
+        </div>
+
+        <!-- RESUMO DE ESTATÍSTICAS DA FIRMA -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div class="bg-foam p-3 rounded-xl comic-border text-center">
+            <span class="text-[10px] font-bold text-mocha uppercase block">Total Inscritos</span>
+            <span id="stat-total" class="text-xl font-black text-espresso font-mono">0</span>
+          </div>
+
+          <div class="bg-mint/20 p-3 rounded-xl comic-border text-center">
+            <span class="text-[10px] font-bold text-emerald-800 uppercase block">Quitados ☕</span>
+            <span id="stat-paid" class="text-xl font-black text-emerald-700 font-mono">0</span>
+          </div>
+
+          <div class="bg-chili/20 p-3 rounded-xl comic-border text-center">
+            <span class="text-[10px] font-bold text-red-800 uppercase block">Pendentes 🌵</span>
+            <span id="stat-unpaid" class="text-xl font-black text-red-700 font-mono">0</span>
+          </div>
+
+          <div class="bg-caramel/20 p-3 rounded-xl comic-border text-center">
+            <span class="text-[10px] font-bold text-amber-900 uppercase block">Arrecadado</span>
+            <span id="stat-raised" class="text-xl font-black text-amber-900 font-mono">R$ 0</span>
+          </div>
+        </div>
+
+        <!-- TABELA ESTILIZADA DOS PARTICIPANTES -->
+        <div class="overflow-x-auto rounded-2xl comic-border bg-foam">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-roast text-foam text-xs font-mono uppercase border-b-2 border-espresso">
+                <th class="p-3">Colega de Trabalho</th>
+                <th class="p-3">Setor</th>
+                <th class="p-3 text-center">Status do Café</th>
+                <th class="p-3 text-center">Data Pagto</th>
+                <th class="p-3 text-right">Ação / Comprovante</th>
+              </tr>
+            </thead>
+            <tbody id="members-table-body" class="divide-y-2 divide-espresso/10 text-sm font-medium">
+              <!-- Renderizado via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- GERADOR DE DESCULPAS DE CALOTEIRO -->
+        <div class="mt-6 bg-latte/40 p-4 rounded-2xl comic-border flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="text-3xl">🎭</div>
+            <div>
+              <h4 class="text-xs font-bold uppercase text-espresso">Gerador Automático de Desculpas de Caloteiro</h4>
+              <p id="funny-excuse-text" class="text-xs text-mocha italic">"Não paguei ainda porque estou fazendo jejum intermitente de cafeína..."</p>
+            </div>
+          </div>
+          <button onclick="generateExcuse()" class="bg-mocha hover:bg-espresso text-foam font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic whitespace-nowrap">
+            <i class="fa-solid fa-dice"></i> Gerar Outra Desculpa
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- TAB 3: SEGUNDA VIA / EMISSOR DE LICENÇAS -->
+    <section id="tab-receipts" class="tab-content hidden space-y-6">
+      
+      <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
+        <div class="mb-6">
+          <h2 class="text-2xl font-black text-espresso flex items-center gap-2">
+            <i class="fa-solid fa-id-card text-caramel"></i> Emissor & Consultor de Licença de Cafeína
+          </h2>
+          <p class="text-xs text-mocha font-medium">Esfregue na cara de quem duvidar que você contribuiu para o café do mês!</p>
+        </div>
+
+        <!-- BUSCADOR DE RECIBO -->
+        <div class="bg-foam p-5 rounded-2xl comic-border shadow-comic mb-6 max-w-xl">
+          <label class="block text-xs font-bold text-espresso uppercase mb-2">Digite o Nome do Colega Quitado:</label>
+          <div class="flex gap-2">
+            <input type="text" id="receipt-search-input" placeholder="Ex: Carlinhos do T.I." class="w-full bg-crema text-espresso font-bold px-4 py-2.5 rounded-xl comic-border focus:outline-none">
+            <button onclick="searchAndShowReceipt()" class="bg-caramel hover:bg-amber-600 text-espresso font-black text-xs px-5 py-2.5 rounded-xl comic-border shadow-comic whitespace-nowrap">
+              <i class="fa-solid fa-magnifying-glass"></i> Gerar Recibo
+            </button>
+          </div>
+        </div>
+
+        <!-- ÁREA DO RECIBO IMPRESSO/VISUALIZADO -->
+        <div id="receipt-display-area" class="hidden">
+          <div id="printable-receipt" class="bg-foam p-6 sm:p-8 rounded-3xl comic-border-lg shadow-comic-xl max-w-2xl mx-auto relative overflow-hidden text-espresso">
+            
+            <!-- STAMP / CARIMBO SE QUITADO -->
+            <div id="receipt-stamp" class="absolute top-6 right-6 font-mono font-black text-xl px-4 py-2 rounded-xl uppercase tracking-widest stamp-approved pointer-events-none select-none z-10">
+              QUITADO ☕
+            </div>
+
+            <!-- TOPO DO RECIBO -->
+            <div class="border-b-4 border-espresso pb-4 mb-4 flex items-center gap-3">
+              <div class="w-12 h-12 bg-caramel rounded-xl comic-border flex items-center justify-center text-espresso text-2xl">
+                <i class="fa-solid fa-mug-hot"></i>
+              </div>
+              <div>
+                <h3 class="text-xl font-black text-espresso tracking-tight">LICENÇA OFICIAL DE CONSUMO DE CAFÉ</h3>
+                <p class="text-[11px] font-mono font-bold text-mocha">REPUBLICA CAFEEIRA DA FIRMA S.A. • EDITAL MENSAL</p>
+              </div>
+            </div>
+
+            <!-- CORPO DO RECIBO -->
+            <div class="space-y-4 font-mono text-xs sm:text-sm my-6">
+              <div class="flex justify-between border-b border-espresso/20 pb-2">
+                <span class="text-mocha font-bold">Nº DA LICENÇA:</span>
+                <span id="rec-id" class="font-bold text-espresso">CAF-2026-0000</span>
+              </div>
+
+              <div class="flex justify-between border-b border-espresso/20 pb-2">
+                <span class="text-mocha font-bold">BENEFICIÁRIO(A):</span>
+                <span id="rec-name" class="font-bold text-espresso text-sm uppercase">NOME DO USUÁRIO</span>
+              </div>
+
+              <div class="flex justify-between border-b border-espresso/20 pb-2">
+                <span class="text-mocha font-bold">SETOR:</span>
+                <span id="rec-dept" class="font-bold text-espresso">GERAL</span>
+              </div>
+
+              <div class="flex justify-between border-b border-espresso/20 pb-2">
+                <span class="text-mocha font-bold">MÊS DE REFERÊNCIA:</span>
+                <span id="rec-month" class="font-bold text-espresso">AGOSTO / 2026</span>
+              </div>
+
+              <div class="flex justify-between border-b border-espresso/20 pb-2">
+                <span class="text-mocha font-bold">VALOR CONTRIBUÍDO:</span>
+                <span id="rec-amount" class="font-bold text-emerald-700 text-base">R$ 15,00</span>
+              </div>
+
+              <div class="flex justify-between border-b border-espresso/20 pb-2">
+                <span class="text-mocha font-bold">DATA DE REGISTRO:</span>
+                <span id="rec-date" class="font-bold text-espresso">14/08/2026 15:30</span>
+              </div>
+            </div>
+
+            <!-- PARECER CÔMICO -->
+            <div class="bg-latte/50 p-3 rounded-xl comic-border text-[11px] font-sans font-medium text-mocha mb-6">
+              <strong>PARECER TÉCNICO:</strong> O portador deste documento possui passe livre para até 4 xícaras diárias de café puro ou com leite. Proibido colocar açúcar no bule coletivo. Válido até o último dia do mês corrente.
+            </div>
+
+            <!-- CÓDIGO DE BARRAS CÔMICO -->
+            <div class="text-center pt-2 border-t-2 border-dashed border-espresso/30">
+              <div class="font-mono text-2xl font-black tracking-widest text-espresso mb-1 select-none">
+                ||||| | |||| ||| |||||| | ||||| ||| |||
+              </div>
+              <p class="text-[9px] font-mono text-mocha uppercase">AUTENTICAÇÃO MECÂNICA DA CAFETEIRA DA FIRMA</p>
+            </div>
+
+            <!-- BOTÕES DE IMPRESSÃO -->
+            <div class="mt-6 flex justify-end gap-2 print:hidden">
+              <button onclick="window.print()" class="bg-mint hover:bg-emerald-600 text-foam font-bold text-xs px-4 py-2.5 rounded-xl comic-border shadow-comic flex items-center gap-2">
+                <i class="fa-solid fa-print"></i> Imprimir / Salvar PDF
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- TAB 4: PAINEL ADMIN (CONFIGURAÇÕES DO MESTRE DO CAFÉ) -->
+    <section id="tab-admin" class="tab-content hidden space-y-6">
+      
+      <!-- LOCK SCREEN DO ADMIN -->
+      <div id="admin-lock-screen" class="bg-crema p-8 rounded-3xl comic-border-lg shadow-comic-xl max-w-md mx-auto text-center space-y-4">
+        <div class="w-16 h-16 bg-roast text-caramel rounded-2xl comic-border shadow-comic flex items-center justify-center mx-auto text-3xl">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+        <h2 class="text-2xl font-black text-espresso">Acesso Restrito ao Mestre do Café</h2>
+        <p class="text-xs text-mocha font-medium">Somente quem limpa o filtro e compra o pão pode alterar as configurações do Pix!</p>
+        
+        <form onsubmit="unlockAdmin(event)" class="space-y-3 pt-2">
+          <input type="password" id="admin-pass-input" placeholder="Senha secreta (Padrão: cafe123)" required class="w-full bg-foam text-espresso text-center font-mono font-bold py-3 rounded-xl comic-border focus:outline-none">
+          <button type="submit" class="w-full bg-caramel hover:bg-amber-600 text-espresso font-black py-3 rounded-xl comic-border shadow-comic hover:shadow-comic-hover">
+            🔓 ENTRAR NO PAINEL
+          </button>
+        </form>
+        <p class="text-[10px] text-mocha/70 italic">Dica: A senha padrão de teste é <code class="font-bold">cafe123</code></p>
+      </div>
+
+      <!-- CONTEÚDO LIBERADO DO ADMIN -->
+      <div id="admin-panel-content" class="hidden space-y-6">
+        
+        <!-- BANNER ADMIN -->
+        <div class="bg-roast text-foam p-6 rounded-3xl comic-border-lg shadow-comic-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <span class="bg-caramel text-espresso text-[10px] font-black px-2.5 py-0.5 rounded-full comic-border uppercase">Modo Mestre Ativo</span>
+            <h2 class="text-2xl font-black text-foam mt-1">Painel do Mestre do Café 👑</h2>
+            <p class="text-xs text-latte">Altere a chave Pix, valor mensal, aprove pagamentos ou reinicie o mês.</p>
+          </div>
+          <button onclick="lockAdmin()" class="bg-chili hover:bg-red-600 text-foam font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic">
+            <i class="fa-solid fa-lock"></i> Sair do Admin
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- CONFIGURAÇÕES DE PIX E VALOR -->
+          <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl space-y-4">
+            <h3 class="text-lg font-black text-espresso border-b-2 border-espresso/20 pb-2 flex items-center gap-2">
+              <i class="fa-solid fa-gear text-caramel"></i> Parâmetros da Cota
+            </h3>
+
+            <form onsubmit="saveAdminSettings(event)" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-espresso uppercase mb-1">Mês / Ano de Referência</label>
+                <input type="text" id="admin-month-input" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-espresso uppercase mb-1">Valor da Mensalidade (R$)</label>
+                <input type="number" step="0.5" id="admin-fee-input" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm font-mono">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-espresso uppercase mb-1">Tipo da Chave Pix</label>
+                <select id="admin-pixtype-input" class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm">
+                  <option value="E-mail">E-mail</option>
+                  <option value="CPF / CNPJ">CPF / CNPJ</option>
+                  <option value="Celular">Celular</option>
+                  <option value="Chave Aleatória">Chave Aleatória</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-espresso uppercase mb-1">Chave Pix para Recebimento</label>
+                <input type="text" id="admin-pixkey-input" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm font-mono">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-espresso uppercase mb-1">Nome do Titular da Conta</label>
+                <input type="text" id="admin-owner-input" required class="w-full bg-foam text-espresso font-bold p-2.5 rounded-xl comic-border text-sm">
+              </div>
+
+              <button type="submit" class="w-full bg-mint hover:bg-emerald-600 text-foam font-black text-sm py-3 rounded-xl comic-border shadow-comic">
+                <i class="fa-solid fa-floppy-disk"></i> SALVAR ALTERAÇÕES
+              </button>
+            </form>
+          </div>
+
+          <!-- AÇÕES RÁPIDAS DE GERENCIAMENTO -->
+          <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl space-y-4 flex flex-col justify-between">
+            <div>
+              <h3 class="text-lg font-black text-espresso border-b-2 border-espresso/20 pb-2 flex items-center gap-2">
+                <i class="fa-solid fa-wand-magic-sparkles text-caramel"></i> Ações Rápidas do Gestor
+              </h3>
+
+              <div class="space-y-3 mt-4">
+                <div class="bg-foam p-3 rounded-xl comic-border">
+                  <h4 class="text-xs font-bold text-espresso">🚨 Cobrador Automático</h4>
+                  <p class="text-[11px] text-mocha mb-2">Dispara um aviso sonoro engraçado e destaca quem ainda não pagou.</p>
+                  <button onclick="triggerHornSound()" class="w-full bg-caramel hover:bg-amber-600 text-espresso font-bold text-xs py-2 rounded-lg comic-border shadow-comic">
+                    <i class="fa-solid fa-bullhorn"></i> TOCAR SIRENE DA COBRANÇA
+                  </button>
+                </div>
+
+                <div class="bg-foam p-3 rounded-xl comic-border">
+                  <h4 class="text-xs font-bold text-espresso">🧹 Novo Mês (Zerar Pagamentos)</h4>
+                  <p class="text-[11px] text-mocha mb-2">Mantém a lista de pessoas, mas marca todos como "Pendente" para o próximo mês.</p>
+                  <button onclick="resetMonthlyPayments()" class="w-full bg-roast hover:bg-espresso text-latte font-bold text-xs py-2 rounded-lg comic-border shadow-comic">
+                    <i class="fa-solid fa-rotate-left"></i> REINICIAR PAGAMENTOS DO MÊS
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ADICIONAR INTEGRANTE MANUALMENTE -->
+            <div class="bg-foam p-4 rounded-2xl comic-border mt-4">
+              <h4 class="text-xs font-bold text-espresso uppercase mb-2">Adicionar Novo Integrante</h4>
+              <form onsubmit="addMemberFromAdmin(event)" class="space-y-2">
+                <input type="text" id="admin-newmember-name" placeholder="Nome do Colega" required class="w-full bg-crema text-xs font-bold p-2 rounded-lg comic-border">
+                <input type="text" id="admin-newmember-dept" placeholder="Setor (ex: RH)" class="w-full bg-crema text-xs font-bold p-2 rounded-lg comic-border">
+                <button type="submit" class="w-full bg-mint text-foam font-bold text-xs py-2 rounded-lg comic-border shadow-comic">
+                  <i class="fa-solid fa-plus"></i> Inserir na Lista
+                </button>
+              </form>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODAL PARA ENTRAR NA VAQUINHA -->
+  <div id="join-modal" class="fixed inset-0 bg-espresso/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-crema p-6 sm:p-8 rounded-3xl comic-border-lg shadow-comic-xl max-w-md w-full space-y-4 relative animate-bounce-short">
+      <button onclick="closeJoinModal()" class="absolute top-4 right-4 bg-chili text-foam rounded-xl w-8 h-8 comic-border flex items-center justify-center font-bold">✕</button>
+      
+      <h3 class="text-2xl font-black text-espresso">Entrar na Vaquinha ☕</h3>
+      <p class="text-xs text-mocha font-medium">Você pode entrar e sair nos meses que quiser sem ressentimentos!</p>
+
+      <form onsubmit="handleJoinSubmit(event)" class="space-y-3 pt-2">
+        <div>
+          <label class="block text-xs font-bold text-espresso uppercase mb-1">Seu Nome *</label>
+          <input type="text" id="join-name-input" required placeholder="Ex: Roberto do Almoxarifado" class="w-full bg-foam text-espresso font-bold p-3 rounded-xl comic-border focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-espresso uppercase mb-1">Seu Setor</label>
+          <input type="text" id="join-dept-input" placeholder="Ex: Compras" class="w-full bg-foam text-espresso font-bold p-3 rounded-xl comic-border focus:outline-none">
+        </div>
+
+        <button type="submit" class="w-full bg-mint text-foam font-black text-base py-3 rounded-xl comic-border shadow-comic">
+          <i class="fa-solid fa-user-plus"></i> CONFIRMAR MINHA ENTRADA
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- FOOTER CÔMICO -->
+  <footer class="bg-roast text-latte comic-border-lg border-b-0 border-x-0 py-6 px-4 mt-auto">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left text-xs">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">☕</span>
+        <div>
+          <p class="font-bold text-foam text-sm">Café Pass - O Guardião do Coador</p>
+          <p class="text-latte/70">Feito para acabar com as briguinhas de quem tomou e não pagou.</p>
+        </div>
+      </div>
+      <p class="font-mono text-caramel font-bold">Sem cota = Sem cafeína © 2026</p>
+    </div>
+  </footer>
+
+  <script>
+    /* ====================================================================
+       ESTADO GLOBAL DO APLICATIVO (MEMÓRIA LOCAL COM FALLBACK)
+       ==================================================================== */
+    
+    // Configurações padrão
+    const DEFAULT_SETTINGS = {
+      month: "AGOSTO / 2026",
+      monthlyFee: 15.00,
+      pixType: "E-mail",
+      pixKey: "cafe-equipe@firma.com.br",
+      pixOwner: "Sr. Cafeeiro do RH"
+    };
+
+    // Integrantes Iniciais
+    const DEFAULT_MEMBERS = [
+      { id: "1", name: "Carlinhos do T.I.", dept: "Tecnologia", status: "PAID", paidAt: "14/08/2026 09:15" },
+      { id: "2", name: "Dona Maria do RH", dept: "Recursos Humanos", status: "PAID", paidAt: "14/08/2026 10:30" },
+      { id: "3", name: "Lucão do Marketing", dept: "Marketing", status: "UNPAID", paidAt: null },
+      { id: "4", name: "Vanessa do Financeiro", dept: "Financeiro", status: "PAID", paidAt: "13/08/2026 16:45" },
+      { id: "5", name: "Pedrinho Estagiário", dept: "Suporte", status: "UNPAID", paidAt: null }
+    ];
+
+    // Carregar do localStorage se existir
+    let state = {
+      settings: JSON.parse(localStorage.getItem('cafe_settings')) || DEFAULT_SETTINGS,
+      members: JSON.parse(localStorage.getItem('cafe_members')) || DEFAULT_MEMBERS,
+      adminUnlocked: false
+    };
+
+    const FUNNY_EXCUSES = [
+      "\"Achei que o café era patrocinado pela diretoria este mês...\"",
+      "\"Esqueci a chave de segurança do banco no meu outro casaco.\"",
+      "\"Estou em transição para o chá verde, por isso não paguei.\"",
+      "\"Paguei na semana passada em pensamentos positivos!\"",
+      "\"Achei que quem faz o café ganha isenção automática.\"",
+      "\"O Pix do meu banco está em manutenção programada de 30 dias.\""
+    ];
+
+    const FUNNY_BANNERS = [
+      "☕ Dica do Dia: Café sem pagamento causa sonolência extrema no relatório de sexta-feira!",
+      "📢 Alerta RH: A garrafa térmica detectou 2 invasores não quitados hoje!",
+      "💡 Sabia que? Cada xícara paga aumenta sua produtividade em 400% e evita reuniões desnecessárias.",
+      "⚠️ Cuidado! O café de quem não paga fica com sabor de chá de boldo requentado."
+    ];
+
+    /* ====================================================================
+       INICIALIZAÇÃO AO CARREGAR A PÁGINA
+       ==================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      updateUIWithSettings();
+      renderMembersList();
+      rotateBanners();
+    });
+
+    function saveStateToStorage() {
+      localStorage.setItem('cafe_settings', JSON.stringify(state.settings));
+      localStorage.setItem('cafe_members', JSON.stringify(state.members));
+    }
+
+    /* ====================================================================
+       NAVEGAÇÃO DAS ABAS
+       ==================================================================== */
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('bg-caramel', 'text-espresso');
+        btn.classList.add('bg-crema', 'text-espresso');
+      });
+
+      const activeTab = document.getElementById(`tab-${tabId}`);
+      if (activeTab) activeTab.classList.remove('hidden');
+
+      const activeNav = document.getElementById(`nav-${tabId}`);
+      if (activeNav) {
+        activeNav.classList.remove('bg-crema');
+        activeNav.classList.add('bg-caramel', 'text-espresso');
+      }
+
+      playClickSound();
+    }
+
+    /* ====================================================================
+       ATUALIZAÇÃO DE INTERFACE COM AS CONFIGURAÇÕES
+       ==================================================================== */
+    function updateUIWithSettings() {
+      const s = state.settings;
+      document.getElementById('display-current-month').innerText = s.month;
+      document.getElementById('display-monthly-fee').innerText = formatMoney(s.monthlyFee);
+      document.getElementById('display-pix-type').innerText = s.pixType;
+      document.getElementById('display-pix-key').value = s.pixKey;
+      document.getElementById('display-pix-owner').innerText = s.pixOwner;
+
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(s.pixKey)}&color=1F120B&bgcolor=FFFDF9`;
+      document.getElementById('qr-code-img').src = qrUrl;
+
+      document.getElementById('admin-month-input').value = s.month;
+      document.getElementById('admin-fee-input').value = s.monthlyFee;
+      document.getElementById('admin-pixtype-input').value = s.pixType;
+      document.getElementById('admin-pixkey-input').value = s.pixKey;
+      document.getElementById('admin-owner-input').value = s.pixOwner;
+
+      document.getElementById('list-month-title').innerText = s.month;
+      
+      updateGoalProgressBar();
+    }
+
+    function updateGoalProgressBar() {
+      const total = state.members.length;
+      const paid = state.members.filter(m => m.status === 'PAID').length;
+      const percentage = total > 0 ? Math.round((paid / total) * 100) : 0;
+
+      document.getElementById('goal-progress-text').innerText = `${paid} / ${total} Quitados (${percentage}%)`;
+      document.getElementById('goal-progress-bar').style.width = `${percentage}%`;
+    }
+
+    /* ====================================================================
+       REGISTRO DE PAGAMENTO DO USUÁRIO (ABA 1)
+       ==================================================================== */
+    function handleUserPayment(e) {
+      e.preventDefault();
+      const nameInput = document.getElementById('user-name-input').value.trim();
+      const deptInput = document.getElementById('user-dept-input').value.trim() || "Geral";
+
+      if (!nameInput) return;
+
+      let member = state.members.find(m => m.name.toLowerCase() === nameInput.toLowerCase());
+      const now = new Date();
+      const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth()+1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+      if (member) {
+        member.status = 'PAID';
+        member.paidAt = formattedDate;
+        if (deptInput !== "Geral") member.dept = deptInput;
+      } else {
+        member = {
+          id: Date.now().toString(),
+          name: nameInput,
+          dept: deptInput,
+          status: 'PAID',
+          paidAt: formattedDate
+        };
+        state.members.push(member);
+      }
+
+      saveStateToStorage();
+      renderMembersList();
+      updateGoalProgressBar();
+
+      showToast(`☕ Pagamento registrado com sucesso para ${nameInput}!`, 'success');
+      playSuccessSound();
+
+      document.getElementById('receipt-search-input').value = member.name;
+      switchTab('receipts');
+      renderReceipt(member);
+
+      document.getElementById('pay-form').reset();
+    }
+
+    /* ====================================================================
+       RENDERIZAÇÃO DA TABELA DE INTEGRANTES (ABA 2)
+       ==================================================================== */
+    function renderMembersList() {
+      const tbody = document.getElementById('members-table-body');
+      const search = document.getElementById('search-member-input').value.toLowerCase();
+      const filter = document.getElementById('filter-status-select').value;
+
+      tbody.innerHTML = '';
+
+      let filtered = state.members.filter(m => {
+        const matchesSearch = m.name.toLowerCase().includes(search) || m.dept.toLowerCase().includes(search);
+        const matchesFilter = filter === 'ALL' || m.status === filter;
+        return matchesSearch && matchesFilter;
+      });
+
+      const totalCount = state.members.length;
+      const paidCount = state.members.filter(m => m.status === 'PAID').length;
+      const unpaidCount = totalCount - paidCount;
+      const totalRaised = paidCount * state.settings.monthlyFee;
+
+      document.getElementById('stat-total').innerText = totalCount;
+      document.getElementById('stat-paid').innerText = paidCount;
+      document.getElementById('stat-unpaid').innerText = unpaidCount;
+      document.getElementById('stat-raised').innerText = formatMoney(totalRaised);
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="p-6 text-center text-mocha font-bold italic">
+              Nenhum participante encontrado... O café está solitário! ☕
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach(m => {
+        const isPaid = m.status === 'PAID';
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-crema/50 transition-colors";
+
+        tr.innerHTML = `
+          <td class="p-3 font-bold text-espresso flex items-center gap-2">
+            <span class="w-8 h-8 rounded-full ${isPaid ? 'bg-mint/20 text-mint' : 'bg-chili/20 text-chili'} comic-border flex items-center justify-center text-xs">
+              ${isPaid ? '☕' : '🌵'}
+            </span>
+            ${escapeHtml(m.name)}
+          </td>
+          <td class="p-3 text-xs font-semibold text-mocha">${escapeHtml(m.dept || 'Geral')}</td>
+          <td class="p-3 text-center">
+            <span class="inline-block text-xs font-black px-3 py-1 rounded-full comic-border ${isPaid ? 'bg-mint text-foam' : 'bg-chili text-foam'}">
+              ${isPaid ? 'CAFEINADO (QUITADO)' : 'DESIDRATADO (PENDENTE)'}
+            </span>
+          </td>
+          <td class="p-3 text-center text-xs font-mono font-bold text-espresso">${m.paidAt || '--/--/----'}</td>
+          <td class="p-3 text-right">
+            <div class="flex items-center justify-end gap-1">
+              ${isPaid ? `
+                <button onclick="viewUserReceipt('${escapeHtml(m.name)}')" title="Ver Segunda Via" class="bg-caramel hover:bg-amber-600 text-espresso text-xs font-bold p-1.5 px-2.5 rounded-lg comic-border shadow-comic">
+                  <i class="fa-solid fa-receipt"></i> Recibo
+                </button>
+              ` : `
+                <button onclick="markAsPaidFromList('${m.id}')" title="Marcar como Pago" class="bg-mint hover:bg-emerald-600 text-foam text-xs font-bold p-1.5 px-2.5 rounded-lg comic-border shadow-comic">
+                  <i class="fa-solid fa-check"></i> Paguei
+                </button>
+              `}
+              <button onclick="removeMember('${m.id}')" title="Sair da vaquinha neste mês" class="bg-roast hover:bg-espresso text-latte text-xs font-bold p-1.5 px-2 rounded-lg comic-border shadow-comic">
+                <i class="fa-solid fa-user-minus"></i>
+              </button>
+            </div>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function markAsPaidFromList(id) {
+      const member = state.members.find(m => m.id === id);
+      if (member) {
+        const now = new Date();
+        member.status = 'PAID';
+        member.paidAt = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth()+1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        
+        saveStateToStorage();
+        renderMembersList();
+        updateGoalProgressBar();
+        showToast(`☕ Pagamento confirmado para ${member.name}!`, 'success');
+        playSuccessSound();
+      }
+    }
+
+    function removeMember(id) {
+      const member = state.members.find(m => m.id === id);
+      if (member) {
+        state.members = state.members.filter(m => m.id !== id);
+        saveStateToStorage();
+        renderMembersList();
+        updateGoalProgressBar();
+        showToast(`Colega ${member.name} saiu da vaquinha deste mês.`, 'info');
+      }
+    }
+
+    /* ====================================================================
+       GERAÇÃO DE RECIBOS E SEGUNDA VIA (ABA 3)
+       ==================================================================== */
+    function searchAndShowReceipt() {
+      const searchName = document.getElementById('receipt-search-input').value.trim();
+      if (!searchName) {
+        showToast("Digite um nome para consultar!", "error");
+        return;
+      }
+
+      const member = state.members.find(m => m.name.toLowerCase() === searchName.toLowerCase());
+      if (!member) {
+        showToast("Colega não encontrado na lista do mês!", "error");
+        return;
+      }
+
+      if (member.status !== 'PAID') {
+        showToast(`Atenção: ${member.name} ainda consta como PENDENTE!`, "error");
+        return;
+      }
+
+      renderReceipt(member);
+    }
+
+    function viewUserReceipt(name) {
+      document.getElementById('receipt-search-input').value = name;
+      switchTab('receipts');
+      const member = state.members.find(m => m.name.toLowerCase() === name.toLowerCase());
+      if (member) renderReceipt(member);
+    }
+
+    function renderReceipt(member) {
+      document.getElementById('receipt-display-area').classList.remove('hidden');
+      document.getElementById('rec-id').innerText = `CAF-2026-${member.id.slice(-4)}`;
+      document.getElementById('rec-name').innerText = member.name;
+      document.getElementById('rec-dept').innerText = member.dept || "GERAL";
+      document.getElementById('rec-month').innerText = state.settings.month;
+      document.getElementById('rec-amount').innerText = formatMoney(state.settings.monthlyFee);
+      document.getElementById('rec-date').innerText = member.paidAt || '14/08/2026 12:00';
+
+      playStampSound();
+    }
+
+    /* ====================================================================
+       PAINEL ADMIN (ABA 4)
+       ==================================================================== */
+    function unlockAdmin(e) {
+      e.preventDefault();
+      const pass = document.getElementById('admin-pass-input').value;
+      if (pass === 'cafe123' || pass === 'admin') {
+        state.adminUnlocked = true;
+        document.getElementById('admin-lock-screen').classList.add('hidden');
+        document.getElementById('admin-panel-content').classList.remove('hidden');
+        showToast("Painel do Mestre liberado com sucesso!", "success");
+      } else {
+        showToast("Senha incorreta! Somente o Mestre do Café passa.", "error");
+      }
+    }
+
+    function lockAdmin() {
+      state.adminUnlocked = false;
+      document.getElementById('admin-lock-screen').classList.remove('hidden');
+      document.getElementById('admin-panel-content').classList.add('hidden');
+      document.getElementById('admin-pass-input').value = '';
+    }
+
+    function saveAdminSettings(e) {
+      e.preventDefault();
+      state.settings.month = document.getElementById('admin-month-input').value.trim();
+      state.settings.monthlyFee = parseFloat(document.getElementById('admin-fee-input').value) || 15.00;
+      state.settings.pixType = document.getElementById('admin-pixtype-input').value;
+      state.settings.pixKey = document.getElementById('admin-pixkey-input').value.trim();
+      state.settings.pixOwner = document.getElementById('admin-owner-input').value.trim();
+
+      saveStateToStorage();
+      updateUIWithSettings();
+      renderMembersList();
+      showToast("Novas configurações salvas com sucesso!", "success");
+    }
+
+    function addMemberFromAdmin(e) {
+      e.preventDefault();
+      const name = document.getElementById('admin-newmember-name').value.trim();
+      const dept = document.getElementById('admin-
