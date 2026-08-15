@@ -1,0 +1,59 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isString(value) {
+      return value is string && value.size() > 0 && value.size() <= 160;
+    }
+
+    function isOptionalString(value) {
+      return value == null || value is string;
+    }
+
+    function hasOnlyKeys(keys) {
+      return request.resource.data.keys().hasOnly(keys);
+    }
+
+    function isValidSettings() {
+      return hasOnlyKeys(['month', 'monthlyFee', 'pixType', 'pixKey', 'pixOwner'])
+        && isString(request.resource.data.month)
+        && request.resource.data.month.size() <= 40
+        && request.resource.data.monthlyFee is number
+        && request.resource.data.monthlyFee >= 0
+        && request.resource.data.monthlyFee <= 1000
+        && isString(request.resource.data.pixType)
+        && request.resource.data.pixType.size() <= 40
+        && isString(request.resource.data.pixKey)
+        && request.resource.data.pixKey.size() <= 160
+        && isString(request.resource.data.pixOwner)
+        && request.resource.data.pixOwner.size() <= 120;
+    }
+
+    function isValidMember(memberId) {
+      return hasOnlyKeys(['id', 'name', 'dept', 'status', 'paidAt'])
+        && request.resource.data.id == memberId
+        && isString(request.resource.data.name)
+        && request.resource.data.name.size() <= 120
+        && isString(request.resource.data.dept)
+        && request.resource.data.dept.size() <= 80
+        && request.resource.data.status in ['PAID', 'UNPAID']
+        && isOptionalString(request.resource.data.paidAt);
+    }
+
+    match /passcafe/settings {
+      allow read: if true;
+      allow create, update: if isValidSettings();
+      allow delete: if false;
+    }
+
+    match /passcafeMembers/{memberId} {
+      allow read: if true;
+      allow create, update: if isValidMember(memberId);
+      allow delete: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

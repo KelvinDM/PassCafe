@@ -111,6 +111,9 @@ Sem essas variaveis, o Cafe Pass trabalha no modo "cada navegador por si", salva
 |-- index.html
 |-- package.json
 |-- vite.config.js
+|-- firebase.json
+|-- firestore.rules
+|-- firestore.indexes.json
 |-- .env.example
 |-- src
 |   |-- main.js
@@ -155,7 +158,31 @@ A documentacao tecnica completa esta em:
 docs/documentacao-tecnica.md
 ```
 
-La tem detalhes sobre arquivos principais, persistencia, modelo de dados, integracoes externas e fluxo do sistema.
+Tambem existe um guia especifico do backend Firestore:
+
+```text
+docs/backend-firestore.md
+```
+
+La tem detalhes sobre regras, colecoes, persistencia, modelo de dados, integracoes externas e fluxo do sistema.
+
+## Backend Firestore
+
+O projeto ja inclui configuracao do Firebase CLI:
+
+```text
+.firebaserc
+firebase.json
+firestore.rules
+firestore.indexes.json
+```
+
+Para publicar as regras:
+
+```bash
+npm run firebase:login
+npm run firebase:deploy:rules
+```
 
 ## Build
 

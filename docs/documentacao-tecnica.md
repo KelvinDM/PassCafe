@@ -51,6 +51,9 @@ npm run preview
 |-- index.html
 |-- package.json
 |-- vite.config.js
+|-- firebase.json
+|-- firestore.rules
+|-- firestore.indexes.json
 |-- .env.example
 |-- README.md
 |-- passcafe.html
@@ -62,7 +65,8 @@ npm run preview
 |-- dist
 |-- exemplo_modelo
 `-- docs
-    `-- documentacao-tecnica.md
+    |-- documentacao-tecnica.md
+    `-- backend-firestore.md
 ```
 
 ## Arquivos importantes
@@ -191,6 +195,23 @@ export default defineConfig({
 })
 ```
 
+### `firebase.json`
+
+Configuracao do Firebase CLI. Aponta quais arquivos devem ser usados para Firestore Rules e indices.
+
+### `firestore.rules`
+
+Regras de seguranca do Firestore. O projeto permite leitura e escrita apenas nas estruturas usadas pelo app:
+
+- `passcafe/settings`
+- `passcafeMembers/{memberId}`
+
+Qualquer outro caminho fica bloqueado.
+
+### `firestore.indexes.json`
+
+Arquivo de indices compostos do Firestore. No momento esta vazio porque as consultas atuais nao precisam de indice customizado.
+
 ### `.env.example`
 
 Modelo das variaveis necessarias para conectar no Firebase:
@@ -232,6 +253,8 @@ Dados salvos:
 - configuracoes em `passcafe/settings`;
 - integrantes em `passcafeMembers`;
 - cada integrante usa o proprio `id` como ID do documento.
+
+As regras e instrucoes do backend estao detalhadas em `docs/backend-firestore.md`.
 
 ## Modelo de dados
 

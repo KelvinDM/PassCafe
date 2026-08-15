@@ -19,10 +19,14 @@ yarn-error.log*
 pnpm-debug.log*
 vite-dev.log
 vite-dev.err.log
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
 
 # Cache e temporarios
 .cache/
 .vite/
+.firebase/
 .temp/
 .tmp/
 
