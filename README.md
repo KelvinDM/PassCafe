@@ -24,11 +24,9 @@ Porque planilha ate resolve. Mas planilha nao julga ninguem com estilo.
 - **Vue 3**
 - **Vite**
 - **Firebase / Firestore**
+- **Iconify + Pixelarticons**
 - **Tailwind CSS via CDN**
-- **Font Awesome via CDN**
 - **Google Fonts**
-- **JSZip**
-- **FileSaver.js**
 
 ## Como Rodar
 
