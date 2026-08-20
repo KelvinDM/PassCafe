@@ -95,6 +95,7 @@ VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
+VITE_PASSCAFE_ADMIN_EMAILS=kelvindaniel1932@gmail.com
 ```
 
 Com essas variaveis preenchidas, o app usa:
@@ -133,6 +134,7 @@ O painel administrativo permite:
 - reiniciar pagamentos do mes;
 - acionar a cobranca moral-sonora dos pendentes.
 
+<<<<<<< Updated upstream
 O acesso do painel usa **Firebase Authentication** com e-mail e senha. A senha nao fica salva no codigo.
 
 Existem dois cargos:
@@ -154,6 +156,18 @@ Se a senha for esquecida, use o link de recuperacao no proprio painel admin.
 docs/backend-firestore.md
 ```
 
+=======
+O acesso ao painel administrativo agora e feito com login Google pelo Firebase Authentication.
+O mestre inicial do cafe e:
+
+```text
+kelvindaniel1932@gmail.com
+```
+
+Para autorizar mais contas, configure `VITE_PASSCAFE_ADMIN_EMAILS` com e-mails separados por virgula.
+No Firebase Console, habilite o provedor Google em Authentication e autorize o dominio usado pelo app.
+
+>>>>>>> Stashed changes
 ## Documentacao
 
 A documentacao tecnica completa esta em:

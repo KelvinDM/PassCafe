@@ -113,7 +113,11 @@ Funcionalidades principais:
 - marcacao manual de pagamento;
 - remocao de participante;
 - consulta e impressao de recibo;
+<<<<<<< Updated upstream
 - painel administrativo com Firebase Authentication;
+=======
+- painel administrativo com login Google;
+>>>>>>> Stashed changes
 - edicao de mes, valor da mensalidade e dados Pix;
 - reinicio mensal dos pagamentos;
 - alertas visuais por toast;
@@ -126,10 +130,22 @@ Dados padrao definidos no componente:
 - participantes iniciais em `DEFAULT_MEMBERS`;
 - frases e banners em `FUNNY_EXCUSES` e `FUNNY_BANNERS`.
 
+<<<<<<< Updated upstream
 O acesso admin usa e-mail/senha do Firebase Authentication. A senha nao fica no frontend e pode ser recuperada pelo link de redefinicao enviado por e-mail. Os cargos ficam em `admins/{uid}`:
 
 - `MASTER`: Mestre do Cafe, com permissao para configuracoes e cadastro de usuarios.
 - `APPRENTICE`: Aprendiz do Cafe, com acesso de apoio ao painel.
+=======
+Autenticacao do painel admin:
+
+```text
+Firebase Authentication com provedor Google
+Mestre inicial: kelvindaniel1932@gmail.com
+```
+
+Contas adicionais podem ser autorizadas por `VITE_PASSCAFE_ADMIN_EMAILS`, usando e-mails separados por virgula.
+O provedor Google precisa estar habilitado no Firebase Authentication e o dominio do app precisa estar autorizado no Firebase Console.
+>>>>>>> Stashed changes
 
 ### `src/firebase.js`
 
@@ -140,8 +156,14 @@ Responsabilidades:
 - ler configuracoes do Firebase via `import.meta.env`;
 - detectar se existe configuracao minima valida;
 - inicializar o app Firebase quando configurado;
+<<<<<<< Updated upstream
 - autenticar o admin por e-mail/senha;
 - enviar link de recuperacao de senha;
+=======
+- inicializar Firebase Auth;
+- observar sessao do usuario;
+- executar login Google e logout;
+>>>>>>> Stashed changes
 - ler e salvar configuracoes da cota;
 - ler, salvar e remover membros;
 - criar dados iniciais no Firestore quando a colecao esta vazia.
@@ -157,12 +179,18 @@ admins/{uid}
 Funcoes exportadas:
 
 - `hasFirebaseConfig`
+<<<<<<< Updated upstream
 - `watchAdminAuth(callback)`
 - `loginAdmin(email, password)`
 - `logoutAdmin()`
 - `sendAdminPasswordReset(email)`
 - `loadAdmins()`
 - `createCafeUser({ email, password, role, createdBy })`
+=======
+- `observeAuth(callback)`
+- `signInWithGoogle()`
+- `signOutUser()`
+>>>>>>> Stashed changes
 - `loadSettings(defaultSettings)`
 - `saveSettings(settings)`
 - `loadMembers(defaultMembers)`
@@ -331,7 +359,11 @@ npm run preview
 
 ## Pontos de atencao
 
+<<<<<<< Updated upstream
 - O painel admin usa Firebase Authentication; o primeiro Mestre tambem precisa do documento `admins/{uid}` com `role: "MASTER"`.
+=======
+- O painel admin usa login Google no Firebase Auth e libera o acesso para os e-mails configurados em `VITE_PASSCAFE_ADMIN_EMAILS`.
+>>>>>>> Stashed changes
 - O Firestore depende de regras de seguranca configuradas no console do Firebase.
 - O Tailwind esta sendo carregado por CDN; para producao mais robusta, pode valer migrar para Tailwind instalado no build.
 - O app usa `localStorage` como fallback, entao dados locais ficam somente no navegador atual.

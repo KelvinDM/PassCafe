@@ -15,6 +15,7 @@ import {
   loadMembers,
   loadPaymentRequests,
   loadSettings,
+<<<<<<< Updated upstream
   loginAdmin,
   logoutAdmin,
   saveMember,
@@ -27,6 +28,21 @@ import {
 } from './firebase'
 
 addCollection(pixelarticons)
+=======
+  observeAuth,
+  saveMember,
+  saveMembers,
+  saveSettings,
+  signInWithGoogle,
+  signOutUser
+} from './firebase'
+
+const MASTER_EMAIL = 'kelvindaniel1932@gmail.com'
+const ADMIN_EMAILS = (import.meta.env.VITE_PASSCAFE_ADMIN_EMAILS || MASTER_EMAIL)
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean)
+>>>>>>> Stashed changes
 
 const DEFAULT_SETTINGS = {
   month: 'AGOSTO / 2026',
@@ -82,18 +98,24 @@ const cafeRoleOptions = [
 const settings = reactive({ ...DEFAULT_SETTINGS })
 const members = ref([...DEFAULT_MEMBERS])
 const activeTab = ref('pay')
-const adminUnlocked = ref(false)
 const loading = ref(true)
+const authReady = ref(false)
+const authLoading = ref(false)
+const authError = ref('')
+const currentUser = ref(null)
 
 const userPayment = reactive({ name: '', dept: '' })
 const joinForm = reactive({ name: '', dept: '' })
 const adminForm = reactive({ ...DEFAULT_SETTINGS })
+<<<<<<< Updated upstream
 const adminCredentials = reactive({ email: '', password: '' })
 const adminAuthLoading = ref(false)
 const adminUser = ref(null)
 const cafeUsers = ref([])
 const paymentRequests = ref([])
 const cafeUserForm = reactive({ email: '', password: '', role: 'APPRENTICE' })
+=======
+>>>>>>> Stashed changes
 const adminNewMember = reactive({ name: '', dept: '' })
 const searchMember = ref('')
 const filterStatus = ref('ALL')
@@ -111,6 +133,7 @@ const pendingMembers = computed(() => members.value.filter((member) => member.st
 const unpaidCount = computed(() => members.value.length - paidMembers.value.length)
 const totalRaised = computed(() => paidMembers.value.length * Number(settings.monthlyFee || 0))
 const goalPercentage = computed(() => members.value.length ? Math.round((paidMembers.value.length / members.value.length) * 100) : 0)
+<<<<<<< Updated upstream
 const isCoffeeMaster = computed(() => adminUser.value?.role === 'MASTER')
 const pendingPaymentRequests = computed(() => {
   const unique = new Map()
@@ -121,6 +144,12 @@ const pendingPaymentRequests = computed(() => {
 })
 const pixPayload = computed(() => buildPixPayload())
 const qrUrl = computed(() => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixPayload.value)}&color=1F120B&bgcolor=FFFDF9`)
+=======
+const qrUrl = computed(() => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(settings.pixKey)}&color=1F120B&bgcolor=FFFDF9`)
+const currentUserEmail = computed(() => currentUser.value?.email?.toLowerCase() || '')
+const adminUnlocked = computed(() => ADMIN_EMAILS.includes(currentUserEmail.value))
+const signedInWithWrongAccount = computed(() => Boolean(currentUser.value && !adminUnlocked.value))
+>>>>>>> Stashed changes
 const filteredMembers = computed(() => {
   const search = searchMember.value.trim().toLowerCase()
   return members.value.filter((member) => {
@@ -131,6 +160,7 @@ const filteredMembers = computed(() => {
 })
 
 onMounted(async () => {
+<<<<<<< Updated upstream
   watchAdminAuth(async (user) => {
     unwatchPaymentRequests()
     paymentRequestsReady = false
@@ -151,6 +181,11 @@ onMounted(async () => {
         paymentRequestsReady = true
       })
     }
+=======
+  observeAuth((user) => {
+    currentUser.value = user
+    authReady.value = true
+>>>>>>> Stashed changes
   })
 
   try {
@@ -172,7 +207,15 @@ onMounted(async () => {
   }, 5000)
 })
 
+<<<<<<< Updated upstream
 onBeforeUnmount(() => unwatchPaymentRequests())
+=======
+function requireAdmin() {
+  if (adminUnlocked.value) return true
+  showToast('Entre com o Gmail do Mestre do Cafe para alterar o painel.', 'error')
+  return false
+}
+>>>>>>> Stashed changes
 
 function loadLocalSettings() {
   return JSON.parse(localStorage.getItem('cafe_settings') || 'null') || DEFAULT_SETTINGS
@@ -364,6 +407,7 @@ function viewUserReceipt(name) {
   playStampSound()
 }
 
+<<<<<<< Updated upstream
 function authErrorMessage(error) {
   const code = error?.code || ''
   if (code.includes('auth/invalid-credential') || code.includes('auth/wrong-password')) return 'E-mail ou senha incorretos.'
@@ -555,9 +599,50 @@ async function addCafeUser() {
   } finally {
     adminAuthLoading.value = false
   }
+=======
+async function unlockAdmin() {
+  if (!hasFirebaseConfig) {
+    showToast('Firebase ainda nao configurado. Login Google indisponivel.', 'error')
+    return
+  }
+
+  authLoading.value = true
+  authError.value = ''
+  try {
+    const credential = await signInWithGoogle()
+    currentUser.value = credential.user
+    if (ADMIN_EMAILS.includes((credential.user.email || '').toLowerCase())) {
+      showToast('Painel do Mestre liberado com Google!', 'success')
+    } else {
+      showToast('Conta Google sem permissao de Mestre do Cafe.', 'error')
+    }
+  } catch (error) {
+    if (error.code === 'auth/popup-closed-by-user') {
+      authError.value = 'O login foi cancelado antes de ser concluido.'
+    } else if (error.code === 'auth/popup-blocked') {
+      authError.value = 'O navegador bloqueou a janela do Google. Libere pop-ups e tente novamente.'
+    } else if (error.code === 'auth/unauthorized-domain') {
+      authError.value = 'Este dominio ainda nao foi autorizado no Firebase Authentication.'
+    } else if (error.code === 'auth/operation-not-allowed') {
+      authError.value = 'O login Google ainda nao esta habilitado no Firebase Authentication.'
+    } else {
+      authError.value = 'Nao foi possivel entrar com o Google. Tente novamente.'
+    }
+    showToast(authError.value, 'error')
+  } finally {
+    authLoading.value = false
+  }
+}
+
+async function lockAdmin() {
+  await signOutUser()
+  currentUser.value = null
+  showToast('Sessao do Mestre encerrada.', 'info')
+>>>>>>> Stashed changes
 }
 
 async function saveAdminSettings() {
+  if (!requireAdmin()) return
   Object.assign(settings, {
     month: adminForm.month.trim(),
     monthlyFee: Number(adminForm.monthlyFee) || 15,
@@ -572,6 +657,7 @@ async function saveAdminSettings() {
 }
 
 async function addMemberFromAdmin() {
+  if (!requireAdmin()) return
   const name = adminNewMember.name.trim()
   if (!name) return
   const member = { id: Date.now().toString(), name, dept: adminNewMember.dept.trim() || 'Geral', status: 'UNPAID', paidAt: null }
@@ -603,6 +689,7 @@ async function handleJoinSubmit() {
 }
 
 async function resetMonthlyPayments() {
+  if (!requireAdmin()) return
   members.value = members.value.map((member) => ({ ...member, status: 'UNPAID', paidAt: null }))
   saveLocalState()
   await saveMembers(members.value)
@@ -940,6 +1027,7 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
 
       <section v-show="!loading && activeTab === 'admin'" class="tab-content space-y-6">
         <div v-if="!adminUnlocked" class="bg-crema p-8 rounded-3xl comic-border-lg shadow-comic-xl max-w-md mx-auto text-center space-y-4">
+<<<<<<< Updated upstream
           <div class="w-16 h-16 bg-roast text-caramel rounded-2xl comic-border shadow-comic flex items-center justify-center mx-auto text-4xl"><Icon icon="pixelarticons:lock" /></div>
           <h2 class="text-2xl font-black text-espresso">Acesso Restrito ao Mestre do Café</h2>
           <p class="text-xs text-mocha font-medium">Entre com o e-mail cadastrado no Firebase. A senha fica guardada lá, longe dos olhos curiosos do bule.</p>
@@ -953,12 +1041,30 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
           <button type="button" @click="recoverAdminPassword" :disabled="adminAuthLoading" class="text-[11px] text-mocha hover:text-espresso font-bold underline decoration-2 underline-offset-2 disabled:opacity-60">
             Esqueci a senha, mandar link por e-mail
           </button>
+=======
+          <div class="w-16 h-16 bg-roast text-caramel rounded-2xl comic-border shadow-comic flex items-center justify-center mx-auto text-3xl"><i class="fa-brands fa-google"></i></div>
+          <h2 class="text-2xl font-black text-espresso">Acesso Restrito ao Mestre do Café</h2>
+          <p class="text-xs text-mocha font-medium">Entre com a conta Google autorizada para alterar Pix, mensalidade e gestão da lista.</p>
+          <button type="button" :disabled="authLoading || !authReady || !hasFirebaseConfig" @click="unlockAdmin" class="w-full bg-foam hover:bg-latte text-espresso font-black py-3 rounded-xl comic-border shadow-comic hover:shadow-comic-hover disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+            <i v-if="authLoading" class="fa-solid fa-spinner animate-spin"></i>
+            <i v-else class="fa-brands fa-google"></i>
+            {{ authLoading ? 'Conectando...' : 'Entrar com Google' }}
+          </button>
+          <p v-if="signedInWithWrongAccount" class="text-[11px] text-chili font-bold">Conta conectada sem permissão: {{ currentUser.email }}</p>
+          <p v-else-if="authError" class="text-[11px] text-chili font-bold">{{ authError }}</p>
+          <p v-else class="text-[10px] text-mocha/70 italic">Mestre inicial: <code class="font-bold">{{ MASTER_EMAIL }}</code></p>
+>>>>>>> Stashed changes
         </div>
 
         <div v-else class="space-y-6">
           <div class="bg-roast text-foam p-6 rounded-3xl comic-border-lg shadow-comic-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+<<<<<<< Updated upstream
             <div><span class="bg-caramel text-espresso text-[10px] font-black px-2.5 py-0.5 rounded-full comic-border uppercase">{{ roleLabel(adminUser?.role) }} Ativo</span><h2 class="text-2xl font-black text-foam mt-1 flex items-center gap-2">Painel do Café <Icon icon="pixelarticons:crown" class="text-caramel" /><span v-if="pendingPaymentRequests.length" class="bg-chili text-foam text-xs px-2 py-0.5 rounded-full comic-border inline-flex items-center gap-1"><Icon icon="pixelarticons:bell-ring" /> {{ pendingPaymentRequests.length }}</span></h2><p class="text-xs text-latte">Conectado como <span class="font-mono font-bold text-caramel">{{ adminUser?.email }}</span>. {{ isCoffeeMaster ? 'Você comanda o bule inteiro.' : 'Você ajuda a manter a vaquinha em ordem.' }}</p></div>
             <CafeButton variant="chili" size="sm" icon="pixelarticons:lock" @click="lockAdmin">Sair do Admin</CafeButton>
+=======
+            <div><span class="bg-caramel text-espresso text-[10px] font-black px-2.5 py-0.5 rounded-full comic-border uppercase">Modo Mestre Ativo</span><h2 class="text-2xl font-black text-foam mt-1">Painel do Mestre do Café 👑</h2><p class="text-xs text-latte">Conectado como {{ currentUser.email }}. Altere a chave Pix, valor mensal, aprove pagamentos ou reinicie o mês.</p></div>
+            <button @click="lockAdmin" class="bg-chili hover:bg-red-600 text-foam font-bold text-xs px-3 py-2 rounded-xl comic-border shadow-comic"><i class="fa-solid fa-right-from-bracket"></i> Sair do Google</button>
+>>>>>>> Stashed changes
           </div>
 
           <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">

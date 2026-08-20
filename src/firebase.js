@@ -1,10 +1,9 @@
 import { initializeApp } from 'firebase/app'
 import {
-  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   getAuth,
   onAuthStateChanged,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
+  signInWithPopup,
   signOut
 } from 'firebase/auth'
 import {
@@ -30,95 +29,36 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 }
 
-export const hasFirebaseConfig = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId)
+export const hasFirebaseConfig = Boolean(
+  firebaseConfig.apiKey &&
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId &&
+  firebaseConfig.appId
+)
 
 const app = hasFirebaseConfig ? initializeApp(firebaseConfig) : null
-const db = app ? getFirestore(app) : null
 const auth = app ? getAuth(app) : null
-let secondaryAdminApp = null
+const db = app ? getFirestore(app) : null
 
-function getSecondaryAdminAuth() {
-  if (!hasFirebaseConfig) return null
-  if (!secondaryAdminApp) secondaryAdminApp = initializeApp(firebaseConfig, 'admin-user-creation')
-  return getAuth(secondaryAdminApp)
-}
+const googleProvider = new GoogleAuthProvider()
+googleProvider.setCustomParameters({ prompt: 'select_account' })
 
-async function getAdminProfile(user) {
-  if (!db || !user) return null
-  const snapshot = await getDoc(doc(db, 'admins', user.uid))
-  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null
-}
-
-export function watchAdminAuth(callback) {
+export function observeAuth(callback) {
   if (!auth) {
     callback(null)
     return () => {}
   }
 
-  return onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      callback(null)
-      return
-    }
-
-    const profile = await getAdminProfile(user)
-    if (profile) {
-      callback({ uid: user.uid, email: user.email, role: profile.role, profile })
-      return
-    }
-
-    await signOut(auth)
-    callback(null)
-  })
+  return onAuthStateChanged(auth, callback)
 }
 
-export async function loginAdmin(email, password) {
+export async function signInWithGoogle() {
   if (!auth) throw new Error('Firebase nao configurado.')
-  const credential = await signInWithEmailAndPassword(auth, email, password)
-  const profile = await getAdminProfile(credential.user)
-
-  if (!profile) {
-    await signOut(auth)
-    const error = new Error('Usuario sem permissao de cafe.')
-    error.code = 'auth/not-cafe-staff'
-    throw error
-  }
-
-  return { uid: credential.user.uid, email: credential.user.email, role: profile.role, profile }
+  return signInWithPopup(auth, googleProvider)
 }
 
-export async function logoutAdmin() {
-  if (!auth) return
-  await signOut(auth)
-}
-
-export async function sendAdminPasswordReset(email) {
-  if (!auth) throw new Error('Firebase nao configurado.')
-  await sendPasswordResetEmail(auth, email)
-}
-
-export async function loadAdmins() {
-  if (!db) return []
-  const snapshot = await getDocs(query(collection(db, 'admins'), orderBy('email')))
-  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
-}
-
-export async function createCafeUser({ email, password, role, createdBy }) {
-  const secondaryAuth = getSecondaryAdminAuth()
-  if (!secondaryAuth || !db) throw new Error('Firebase nao configurado.')
-
-  const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password)
-  const admin = {
-    uid: credential.user.uid,
-    email: credential.user.email,
-    role,
-    createdBy,
-    createdAt: new Date().toISOString()
-  }
-
-  await setDoc(doc(db, 'admins', credential.user.uid), admin)
-  await signOut(secondaryAuth)
-  return admin
+export async function signOutUser() {
+  if (auth) await signOut(auth)
 }
 
 export async function loadSettings(defaultSettings) {
