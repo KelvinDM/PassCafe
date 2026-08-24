@@ -261,6 +261,218 @@ select.comic-border:hover {
   background: #FBF3E8;
 }
 
+.app-header-shell {
+  width: min(100%, 1400px);
+  margin: 0 auto;
+  padding: 0.75rem 1rem 0.65rem;
+  display: grid;
+  grid-template-columns: minmax(245px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+}
+
+.app-header-main {
+  display: contents;
+}
+
+.app-header-brand {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.app-header-logo {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  display: grid;
+  place-items: center;
+  border: 3px solid #1f120b;
+  border-radius: 8px;
+  background: #d97706;
+  color: #1f120b;
+  box-shadow: 3px 3px 0 #1f120b;
+}
+
+.app-header-logo > svg { width: 30px; height: 30px; }
+.app-header-logo .steam-line { position: absolute; top: -15px; left: 10px; color: #fffdf9; font-size: 0.72rem; font-weight: 900; }
+.app-header-logo .steam-2 { left: 21px; }
+.app-header-logo .steam-3 { left: 32px; }
+
+.app-header-brand h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: #fffdf9;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(1.3rem, 2.4vw, 1.9rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.app-header-brand h1 span {
+  padding: 0.2rem 0.4rem;
+  border: 2px solid #1f120b;
+  border-radius: 4px;
+  background: #d97706;
+  color: #1f120b;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.55rem;
+}
+
+.app-header-brand p { margin: 0.35rem 0 0; color: #ead5c3; font-size: 0.68rem; font-weight: 600; }
+
+.user-account-badge {
+  grid-column: 3;
+  grid-row: 1;
+  position: relative;
+  min-width: 225px;
+  max-width: min(340px, 48vw);
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.4rem 0.45rem;
+  border: 3px solid #10b981;
+  border-radius: 6px;
+  background: #3d2314;
+  color: #fffdf9;
+  box-shadow: 4px 4px 0 #1f120b;
+}
+
+.user-account-badge.is-master {
+  border-color: #f7c969;
+  background: #35200e;
+  box-shadow: 0 0 0 2px #805314, 5px 5px 0 #1f120b;
+}
+
+.user-account-badge.is-master::before,
+.user-account-badge.is-master::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  width: 10px;
+  height: 8px;
+  background: #f7c969;
+}
+
+.user-account-badge.is-master::before { left: 62px; }
+.user-account-badge.is-master::after { left: 76px; }
+
+.user-avatar {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  border: 3px solid #10b981;
+  border-radius: 5px;
+  background: #fbf3e8;
+  color: #1f120b;
+}
+
+.user-avatar.is-master { border-color: #f7c969; }
+.user-avatar > img { width: 100%; height: 100%; border-radius: 2px; object-fit: cover; }
+.user-avatar > svg { width: 24px; height: 24px; }
+
+.avatar-crown {
+  position: absolute;
+  top: -17px;
+  left: 50%;
+  width: 25px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  transform: translateX(-50%) rotate(-6deg);
+  color: #f7c969;
+  filter: drop-shadow(2px 2px 0 #1f120b);
+}
+
+.avatar-crown svg { width: 22px; height: 22px; }
+.user-account-copy { min-width: 0; }
+
+.user-role-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #6ee7b7;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.54rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.is-master .user-role-label { color: #f7c969; }
+.user-role-label svg { width: 13px; height: 13px; }
+.user-account-copy strong { display: block; margin-top: 0.3rem; overflow: hidden; color: #fffdf9; font-size: 0.78rem; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+
+.account-admin-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+  padding: 0 0 0.15rem;
+  border: 0;
+  border-bottom: 2px solid #f7c969;
+  background: transparent;
+  color: #f7c969;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.55rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.account-admin-link:hover { color: #fff3bd; border-color: #fff3bd; }
+.account-admin-link:focus-visible { outline: 2px solid #f7c969; outline-offset: 3px; }
+.account-admin-link svg { width: 13px; height: 13px; }
+
+.account-logout {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #1f120b;
+  border-radius: 4px;
+  background: #ef4444;
+  color: #fffdf9;
+  box-shadow: 2px 2px 0 #1f120b;
+}
+
+.account-logout:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #1f120b; }
+.account-logout:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #1f120b; }
+.account-logout:focus-visible { outline: 3px solid #f7c969; outline-offset: 3px; }
+.account-logout svg { width: 17px; height: 17px; }
+
+.app-header-nav {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0;
+  padding: 0.15rem 0.15rem 0.25rem;
+  overflow-x: auto;
+}
+
+@media (max-width: 980px) {
+  .app-header-shell { display: block; }
+  .app-header-main { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .app-header-nav { margin-top: 0.75rem; }
+  .app-header-brand p { display: none; }
+}
+
 .nav-icon {
   width: 20px;
   height: 20px;
@@ -1348,6 +1560,45 @@ select.comic-border:hover {
   line-height: 1.45;
 }
 
+@media (max-width: 640px) {
+  .app-header-shell { padding-inline: 0.65rem; }
+  .app-header-main { gap: 0.6rem; }
+  .app-header-logo { width: 42px; height: 42px; flex-basis: 42px; }
+  .app-header-brand h1 { font-size: 1.15rem; }
+  .app-header-brand h1 span, .app-header-brand p { display: none; }
+  .user-account-badge { min-width: 0; max-width: 235px; grid-template-columns: 38px minmax(0, 1fr) 30px; gap: 0.45rem; min-height: 52px; }
+  .user-avatar { width: 38px; height: 38px; }
+  .user-role-label { font-size: 0.48rem; }
+  .user-account-copy strong { max-width: 110px; font-size: 0.7rem; }
+  .account-logout { width: 29px; height: 29px; }
+  .app-header-nav { justify-content: flex-start; }
+}
+
+@media (max-width: 410px) {
+  .app-header-logo { display: none; }
+  .app-header-brand h1 { font-size: 1rem; }
+  .user-account-badge { max-width: 245px; }
+  .user-account-copy strong { max-width: 92px; }
+}
+
+.guest-save-notice {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  align-items: start;
+  gap: 0.65rem;
+  margin-top: 1rem;
+  padding: 0.7rem;
+  border: 2px solid #80613e;
+  border-radius: 5px;
+  background: #2b1e19;
+  color: #f7c969;
+}
+
+.guest-save-notice > svg { width: 22px; height: 22px; }
+.guest-save-notice p { margin: 0; }
+.guest-save-notice strong { display: block; font-family: 'Space Grotesk', monospace; font-size: 0.6rem; font-weight: 900; }
+.guest-save-notice span { display: block; margin-top: 0.2rem; color: #d8c9bb; font-size: 0.68rem; font-weight: 700; line-height: 1.3; }
+
 .access-divider {
   display: flex;
   align-items: center;
@@ -1978,6 +2229,86 @@ select.comic-border:hover {
   animation: sceneFlash 500ms ease-out forwards;
 }
 
+.signed-game-view {
+  min-height: min(820px, calc(100vh - 150px));
+  padding: 1rem;
+  border: 4px solid #120b08;
+  border-radius: 8px;
+  box-shadow: 8px 8px 0 rgba(8, 6, 7, 0.3);
+}
+
+.signed-game-toolbar {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.75rem;
+  border: 3px solid #120b08;
+  border-radius: 6px;
+  background: #201613;
+  color: #fff8ec;
+}
+
+.signed-save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  color: #d8c9bb;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.signed-save-status svg { flex: 0 0 22px; width: 22px; height: 22px; color: var(--world-mint); }
+.signed-save-status strong { color: var(--world-mint); font-family: 'Space Grotesk', monospace; font-size: 0.64rem; }
+
+.signed-game-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.back-to-pix-button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.65rem;
+  border: 2px solid #120b08;
+  border-radius: 4px;
+  background: var(--world-accent);
+  color: #1f120b;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.6rem;
+  font-weight: 900;
+  box-shadow: 3px 3px 0 #120b08;
+}
+
+.back-to-pix-button:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #120b08; }
+.back-to-pix-button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #120b08; }
+.back-to-pix-button:focus-visible { outline: 3px solid var(--world-mint); outline-offset: 3px; }
+.back-to-pix-button svg { width: 16px; height: 16px; }
+
+.signed-clicker-shell {
+  position: relative;
+  z-index: 4;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(480px, 1.35fr) minmax(310px, 0.82fr);
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.signed-clicker-shell .brew-panel { min-height: 650px; }
+.signed-clicker-shell .upgrade-shop { align-self: stretch; max-height: 100%; }
+
 @keyframes pixelTwinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 @keyframes cloudCruise { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 320px)); } }
 @keyframes scooterRide { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 160px)); } }
@@ -2002,6 +2333,9 @@ select.comic-border:hover {
   .upgrade-icon { width: 38px; height: 38px; }
   .upgrade-price { grid-column: 1 / -1; display: flex; justify-content: space-between; padding: 0 0.2rem; }
   .shop-tip { display: none; }
+  .signed-game-view { min-height: auto; }
+  .signed-clicker-shell { grid-template-columns: 1fr; }
+  .signed-clicker-shell .upgrade-shop { grid-column: auto; max-height: none; }
 }
 
 @media (max-width: 760px) {
@@ -2022,6 +2356,11 @@ select.comic-border:hover {
   .upgrade-list { grid-template-columns: 1fr 1fr; }
   .brew-stage { min-height: 320px; }
   .pixel-world { position: fixed; }
+  .signed-game-view { padding: 0.65rem; }
+  .signed-game-toolbar { align-items: stretch; flex-direction: column; }
+  .signed-game-actions { justify-content: space-between; flex-wrap: wrap; }
+  .signed-clicker-shell { display: flex; flex-direction: column; }
+  .signed-clicker-shell .brew-panel { min-height: 620px; }
 }
 
 @media (max-width: 460px) {

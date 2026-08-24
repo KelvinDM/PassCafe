@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <title>Café Pass</title>
+  <rect width="32" height="32" rx="5" fill="#1F120B"/>
+  <path fill="#10B981" d="M11 4h3v3h-2v3H9V7h2zM18 3h3v3h-2v4h-3V6h2z"/>
+  <path fill="#FFFDF9" d="M6 11h18v3h3v3h2v6h-2v3h-5v3H8v-3H6z"/>
+  <path fill="#D97706" d="M9 14h12v8H9z"/>
+  <path fill="#1F120B" d="M21 14h4v3h2v5h-2v2h-4v-3h3v-4h-3zM8 26h14v3H8z"/>
+  <path fill="#FCD9A5" d="M10 14h10v2H10z"/>
+</svg>

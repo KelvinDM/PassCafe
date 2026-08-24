@@ -1,0 +1,170 @@
+<script setup>
+import { Icon } from '@iconify/vue'
+
+defineProps({
+  autoBrew: { type: Number, required: true },
+  canRebirth: { type: Boolean, required: true },
+  clickBursts: { type: Array, required: true },
+  clickerLevel: { type: Number, required: true },
+  clickerUpgrades: { type: Array, required: true },
+  clickPower: { type: Number, required: true },
+  coffeeCoins: { type: Number, required: true },
+  coinFes: { type: Number, required: true },
+  currentWorld: { type: Object, required: true },
+  gameStatus: { type: String, required: true },
+  isSkillUnlocked: { type: Function, required: true },
+  levelProgress: { type: Number, required: true },
+  levelTarget: { type: Number, required: true },
+  rebirthConfirming: { type: Boolean, required: true },
+  rebirthLevel: { type: Number, required: true },
+  rebirthProgress: { type: Number, required: true },
+  rebirthReward: { type: Number, required: true },
+  rebirths: { type: Number, required: true },
+  shopView: { type: String, required: true },
+  skillCost: { type: Function, required: true },
+  skillTree: { type: Array, required: true },
+  totalBrewed: { type: Number, required: true },
+  upgradeCost: { type: Function, required: true }
+})
+
+defineEmits(['brew', 'buy-upgrade', 'buy-skill', 'rebirth', 'update-shop-view'])
+
+function formatGameNumber(value) {
+  const amount = Math.floor(Number(value) || 0)
+  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`
+  if (amount >= 1_000) return `${(amount / 1_000).toFixed(1)}K`
+  return amount.toLocaleString('pt-BR')
+}
+</script>
+
+<template>
+  <section class="brew-panel" aria-label="Café Clicker">
+    <div class="brew-heading">
+      <div>
+        <span class="brew-kicker">{{ currentWorld.name }}</span>
+        <h2>ESTAÇÃO DE PREPARO</h2>
+      </div>
+      <span class="brew-rate">+{{ formatGameNumber(autoBrew) }}/s</span>
+    </div>
+
+    <div class="game-stats">
+      <div><span>SALDO</span><strong>{{ formatGameNumber(coffeeCoins) }}</strong></div>
+      <div><span>POR CLIQUE</span><strong>+{{ formatGameNumber(clickPower) }}</strong></div>
+      <div><span>PRODUZIDOS</span><strong>{{ formatGameNumber(totalBrewed) }}</strong></div>
+    </div>
+
+    <div class="brew-stage">
+      <div v-if="clickerUpgrades[1].owned" class="barista-bot" aria-hidden="true"><i></i><b></b></div>
+      <div v-if="clickerUpgrades[0].owned" class="pixel-grinder" aria-hidden="true"><i></i></div>
+      <div v-if="clickerUpgrades[3].owned" class="pro-machine" aria-hidden="true"><i></i><b></b></div>
+      <div v-if="clickerLevel >= 3" class="level-companion sugar-buddy" title="Cubinho - desbloqueado no nível 3"><i></i><b></b></div>
+      <div v-if="clickerLevel >= 5" class="level-companion cookie-buddy" title="Biscoito - desbloqueado no nível 5"><i></i><b></b><em></em></div>
+      <div v-if="clickerLevel >= 7" class="level-companion milk-buddy" title="Leitinho - desbloqueado no nível 7"><i></i><b></b></div>
+      <div v-if="clickerLevel >= 9" class="level-companion bean-buddy" title="Grãozinho - desbloqueado no nível 9"><i></i><b></b></div>
+      <div v-if="clickerLevel >= 12" class="level-companion donut-buddy" title="Donut - desbloqueado no nível 12"><i></i><b></b></div>
+      <button type="button" class="brew-button" aria-label="Preparar café" @click="$emit('brew', $event)">
+        <span class="cup-steam steam-a"></span>
+        <span class="cup-steam steam-b"></span>
+        <span class="cup-steam steam-c"></span>
+        <span class="brew-cup"><Icon icon="pixelarticons:coffee" /></span>
+        <span class="tap-label">CLIQUE PARA PREPARAR</span>
+        <span
+          v-for="burst in clickBursts"
+          :key="burst.id"
+          class="coffee-burst"
+          :class="{ 'is-critical': burst.critical }"
+          :style="{ left: `${burst.x}px`, top: `${burst.y}px` }"
+        >+{{ formatGameNumber(burst.value) }}</span>
+      </button>
+    </div>
+
+    <div class="level-track">
+      <div class="level-copy"><span>{{ gameStatus }}</span><strong>{{ Math.floor(levelProgress) }}%</strong></div>
+      <div class="level-bar"><i :style="{ width: `${levelProgress}%` }"></i></div>
+      <div class="level-goal">PRÓXIMO NÍVEL EM {{ formatGameNumber(levelTarget - totalBrewed) }} CAFÉS</div>
+    </div>
+  </section>
+
+  <aside class="upgrade-shop">
+    <div class="shop-heading">
+      <div>
+        <span>{{ shopView === 'upgrades' ? 'POWER-UPS' : 'PROGRESSO PERMANENTE' }}</span>
+        <h2>{{ shopView === 'upgrades' ? 'LOJA DE UPGRADES' : 'ÁRVORE DE HABILIDADES' }}</h2>
+      </div>
+      <Icon :icon="shopView === 'upgrades' ? 'pixelarticons:shopping-bag' : 'pixelarticons:tree'" />
+    </div>
+
+    <div class="shop-tabs" role="tablist" aria-label="Progressão do clicker">
+      <button type="button" :class="{ active: shopView === 'upgrades' }" @click="$emit('update-shop-view', 'upgrades')">
+        <Icon icon="pixelarticons:shopping-bag" /> UPGRADES
+      </button>
+      <button type="button" :class="{ active: shopView === 'skills' }" @click="$emit('update-shop-view', 'skills')">
+        <Icon icon="pixelarticons:tree" /> HABILIDADES
+      </button>
+    </div>
+
+    <div v-if="shopView === 'upgrades'" class="upgrade-list">
+      <button
+        v-for="upgrade in clickerUpgrades"
+        :key="upgrade.id"
+        type="button"
+        class="upgrade-button"
+        :class="{ 'can-buy': coffeeCoins >= upgradeCost(upgrade) }"
+        @click="$emit('buy-upgrade', upgrade)"
+      >
+        <span class="upgrade-icon"><Icon :icon="upgrade.icon" /></span>
+        <span class="upgrade-info">
+          <strong>{{ upgrade.name }}</strong>
+          <small>{{ upgrade.description }}</small>
+        </span>
+        <span class="upgrade-price">
+          <b>{{ formatGameNumber(upgradeCost(upgrade)) }}</b>
+          <small>NV. {{ upgrade.owned }}</small>
+        </span>
+      </button>
+    </div>
+
+    <div v-else class="skill-tree">
+      <div class="coinfe-balance">
+        <Icon icon="pixelarticons:coin" />
+        <span>Saldo permanente</span>
+        <strong>{{ formatGameNumber(coinFes) }} CoinFés</strong>
+      </div>
+      <button
+        v-for="skill in skillTree"
+        :key="skill.id"
+        type="button"
+        class="skill-node"
+        :class="[`branch-${skill.branch}`, { locked: !isSkillUnlocked(skill), maxed: skill.level >= skill.maxLevel }]"
+        :disabled="!isSkillUnlocked(skill)"
+        @click="$emit('buy-skill', skill)"
+      >
+        <span class="skill-node-icon"><Icon :icon="isSkillUnlocked(skill) ? skill.icon : 'pixelarticons:lock'" /></span>
+        <span class="skill-node-copy"><strong>{{ skill.name }}</strong><small>{{ skill.description }}</small></span>
+        <span class="skill-node-level">
+          <b>{{ skill.level }}/{{ skill.maxLevel }}</b>
+          <small v-if="skill.level < skill.maxLevel">{{ skillCost(skill) }} CF</small>
+          <small v-else>MAX</small>
+        </span>
+      </button>
+    </div>
+
+    <div class="rebirth-card" :class="{ ready: canRebirth }">
+      <div class="rebirth-title">
+        <span><Icon icon="pixelarticons:repeat" /> RENASCIMENTO {{ rebirths }}</span>
+        <strong v-if="canRebirth">+{{ rebirthReward }} CoinFé{{ rebirthReward > 1 ? 's' : '' }}</strong>
+        <strong v-else>NÍVEL {{ rebirthLevel }}</strong>
+      </div>
+      <div class="rebirth-bar"><i :style="{ width: `${rebirthProgress}%` }"></i></div>
+      <button type="button" class="rebirth-button" :class="{ confirming: rebirthConfirming }" @click="$emit('rebirth')">
+        <Icon :icon="canRebirth ? 'pixelarticons:repeat' : 'pixelarticons:lock'" />
+        {{ rebirthConfirming ? 'CONFIRMAR RENASCIMENTO' : canRebirth ? 'RENASCER AGORA' : `DESBLOQUEIA NO NÍVEL ${rebirthLevel}` }}
+      </button>
+    </div>
+
+    <div class="shop-tip">
+      <Icon :icon="shopView === 'upgrades' ? 'pixelarticons:trending-up' : 'pixelarticons:coin'" />
+      <span>{{ shopView === 'upgrades' ? 'Upgrades são reiniciados ao renascer.' : 'Habilidades e CoinFés permanecem após cada renascimento.' }}</span>
+    </div>
+  </aside>
+</template>
