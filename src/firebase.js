@@ -104,6 +104,12 @@ export async function createPaymentRequest(request) {
   return request
 }
 
+export async function createAuditLog(entry) {
+  if (!db) return entry
+  await setDoc(doc(db, 'auditLogs', entry.id), entry)
+  return entry
+}
+
 export async function loadPaymentRequests() {
   if (!db) return []
   const snapshot = await getDocs(query(collection(db, 'paymentRequests'), orderBy('requestedAt', 'desc')))

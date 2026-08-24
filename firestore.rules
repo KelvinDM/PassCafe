@@ -51,20 +51,29 @@ service cloud.firestore {
     }
 
     function isValidMember(memberId) {
-      return hasOnlyKeys(['id', 'name', 'dept', 'status', 'paidAt'])
+      return hasOnlyKeys(['id', 'name', 'dept', 'status', 'paidAt', 'createdByUid', 'createdByEmail', 'createdAt', 'updatedByUid', 'updatedByEmail', 'updatedAt'])
         && request.resource.data.id == memberId
         && isString(request.resource.data.name)
         && request.resource.data.name.size() <= 120
         && isString(request.resource.data.dept)
         && request.resource.data.dept.size() <= 80
         && request.resource.data.status in ['PAID', 'UNPAID', 'PENDING']
-        && isOptionalString(request.resource.data.paidAt);
+        && isOptionalString(request.resource.data.paidAt)
+        && isOptionalString(request.resource.data.createdByUid)
+        && isOptionalString(request.resource.data.createdByEmail)
+        && isOptionalString(request.resource.data.createdAt)
+        && isOptionalString(request.resource.data.updatedByUid)
+        && isOptionalString(request.resource.data.updatedByEmail)
+        && isOptionalString(request.resource.data.updatedAt);
     }
 
     function isPublicMemberWrite(memberId) {
-      return isValidMember(memberId)
+      return request.auth != null
+        && isValidMember(memberId)
         && request.resource.data.status in ['UNPAID', 'PENDING']
         && request.resource.data.paidAt == null
+        && request.resource.data.updatedByUid == request.auth.uid
+        && request.resource.data.updatedByEmail == request.auth.token.email
         && (!exists(/databases/$(database)/documents/passcafeMembers/$(memberId))
           || resource.data.status != 'PAID');
     }
@@ -81,7 +90,7 @@ service cloud.firestore {
     }
 
     function isValidPaymentRequest(requestId) {
-      return request.resource.data.keys().hasOnly(['id', 'memberId', 'name', 'dept', 'amount', 'month', 'status', 'requestedAt', 'reviewedAt', 'reviewedBy'])
+      return request.resource.data.keys().hasOnly(['id', 'memberId', 'name', 'dept', 'amount', 'month', 'status', 'requestedAt', 'reviewedAt', 'reviewedBy', 'requestedByUid', 'requestedByEmail', 'requestedByName'])
         && request.resource.data.id == requestId
         && isString(request.resource.data.memberId)
         && isString(request.resource.data.name)
@@ -96,14 +105,31 @@ service cloud.firestore {
         && request.resource.data.status in ['PENDING', 'APPROVED', 'REJECTED']
         && request.resource.data.requestedAt is string
         && isOptionalString(request.resource.data.reviewedAt)
-        && isOptionalString(request.resource.data.reviewedBy);
+        && isOptionalString(request.resource.data.reviewedBy)
+        && isOptionalString(request.resource.data.requestedByUid)
+        && isOptionalString(request.resource.data.requestedByEmail)
+        && isOptionalString(request.resource.data.requestedByName);
     }
 
     function isPublicPaymentRequest(requestId) {
-      return isValidPaymentRequest(requestId)
+      return request.auth != null
+        && isValidPaymentRequest(requestId)
         && request.resource.data.status == 'PENDING'
         && request.resource.data.reviewedAt == null
-        && request.resource.data.reviewedBy == null;
+        && request.resource.data.reviewedBy == null
+        && request.resource.data.requestedByUid == request.auth.uid
+        && request.resource.data.requestedByEmail == request.auth.token.email;
+    }
+
+    function isValidAuditLog() {
+      return request.resource.data.keys().hasOnly(['id', 'action', 'actorUid', 'actorEmail', 'actorName', 'createdAt', 'details'])
+        && request.auth != null
+        && request.resource.data.id is string
+        && request.resource.data.action is string
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.actorEmail == request.auth.token.email
+        && isOptionalString(request.resource.data.actorName)
+        && request.resource.data.createdAt is string;
     }
 
     match /admins/{adminId} {
@@ -121,7 +147,7 @@ service cloud.firestore {
     match /passcafeMembers/{memberId} {
       allow read: if true;
       allow create, update: if (isCafeStaff() && isValidMember(memberId)) || isPublicMemberWrite(memberId);
-      allow delete: if isCafeStaff();
+      allow delete: if request.auth != null;
     }
 
     match /paymentRequests/{requestId} {
@@ -129,6 +155,12 @@ service cloud.firestore {
       allow create: if isPublicPaymentRequest(requestId);
       allow update: if isCafeStaff() && isValidPaymentRequest(requestId);
       allow delete: if false;
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isCafeStaff();
+      allow create: if isValidAuditLog();
+      allow update, delete: if false;
     }
 
     match /{document=**} {

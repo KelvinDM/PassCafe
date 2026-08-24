@@ -8,6 +8,7 @@ import FeatureIcon from './components/FeatureIcon.vue'
 import StatTile from './components/StatTile.vue'
 import {
   deleteMember as deleteFirestoreMember,
+  createAuditLog,
   createPaymentRequest,
   hasFirebaseConfig,
   loadMembers,
@@ -63,6 +64,48 @@ const FUNNY_BANNERS = [
   'Cuidado! O café de quem não paga fica com sabor de chá de boldo requentado.'
 ]
 
+const LOGIN_SATIRE_PHRASES = [
+  'O café de hoje tem notas de produtividade e um leve aroma de sexta-feira.',
+  'Carregando cafeína... reuniões desnecessárias foram reduzidas em 87%.',
+  'Uma xícara rara apareceu. Ela concede +10 de paciência até o almoço.',
+  'O expresso está pronto. A coragem para abrir a caixa de entrada, nem tanto.',
+  'Dizem que o café não resolve tudo. Claramente faltou uma segunda dose.',
+  'Seu combo de hoje: café forte, foco crítico e zero vontade de responder "ok".',
+  'A cafeteira subiu de nível e agora julga silenciosamente quem escolhe descafeinado.',
+  'Pressione continuar antes que alguém transforme o último café em cappuccino.'
+]
+
+const CLICKER_STORAGE_KEY = 'passcafe_clicker_v1'
+const REBIRTH_LEVEL = 10
+const REBIRTH_THRESHOLD = 45 * Math.pow(REBIRTH_LEVEL - 1, 2)
+const CLICKER_UPGRADE_CATALOG = [
+  { id: 'grinder', name: 'Moedor turbo', description: '+1 por clique', icon: 'pixelarticons:speed-fast', baseCost: 25, clickBonus: 1, autoBonus: 0 },
+  { id: 'barista', name: 'Barista bot', description: '+1 café por segundo', icon: 'pixelarticons:android', baseCost: 80, clickBonus: 0, autoBonus: 1 },
+  { id: 'double', name: 'Dose dupla', description: '+5 por clique', icon: 'pixelarticons:coffee', baseCost: 180, clickBonus: 5, autoBonus: 0 },
+  { id: 'machine', name: 'Cafeteira PRO', description: '+6 cafés por segundo', icon: 'pixelarticons:zap', baseCost: 420, clickBonus: 0, autoBonus: 6 },
+  { id: 'thermal', name: 'Copo térmico', description: '+18 por clique', icon: 'pixelarticons:briefcase', baseCost: 900, clickBonus: 18, autoBonus: 0 },
+  { id: 'delivery', name: 'Delivery expresso', description: '+22 cafés por segundo', icon: 'pixelarticons:truck', baseCost: 1650, clickBonus: 0, autoBonus: 22 },
+  { id: 'legendary', name: 'Grão lendário', description: '+65 por clique', icon: 'pixelarticons:star', baseCost: 3600, clickBonus: 65, autoBonus: 0 },
+  { id: 'franchise', name: 'Franquia orbital', description: '+75 cafés por segundo', icon: 'pixelarticons:building-community', baseCost: 8200, clickBonus: 0, autoBonus: 75 }
+]
+
+const SKILL_TREE_CATALOG = [
+  { id: 'origin', name: 'Receita ancestral', description: '+10% em toda produção', icon: 'pixelarticons:coffee-alt', baseCost: 1, maxLevel: 1, branch: 'root', globalBonus: 0.1 },
+  { id: 'rapid', name: 'Mãos de barista', description: '+25% de força no clique', icon: 'pixelarticons:human-handsup', baseCost: 1, maxLevel: 4, branch: 'click', requires: { id: 'origin', level: 1 }, clickBonus: 0.25 },
+  { id: 'automatic', name: 'Turno automático', description: '+25% de produção por segundo', icon: 'pixelarticons:repeat', baseCost: 1, maxLevel: 4, branch: 'auto', requires: { id: 'origin', level: 1 }, autoBonus: 0.25 },
+  { id: 'supplier', name: 'Fornecedor VIP', description: '-7% no preço dos upgrades', icon: 'pixelarticons:briefcase-check', baseCost: 2, maxLevel: 3, branch: 'utility', requires: { id: 'origin', level: 1 }, discountBonus: 0.07 },
+  { id: 'critical', name: 'Dose crítica', description: '+8% de chance de clique x5', icon: 'pixelarticons:zap', baseCost: 2, maxLevel: 3, branch: 'click', requires: { id: 'rapid', level: 2 }, criticalBonus: 0.08 },
+  { id: 'temporal', name: 'Cafeteira temporal', description: '+20% em toda produção', icon: 'pixelarticons:clock', baseCost: 3, maxLevel: 3, branch: 'auto', requires: { id: 'automatic', level: 2 }, globalBonus: 0.2 }
+]
+
+const WORLD_STAGES = [
+  { name: 'Turno da madrugada', label: 'MADRUGADA', className: 'world-night' },
+  { name: 'Primeiro expresso', label: 'AMANHECER', className: 'world-dawn' },
+  { name: 'Cafeteria aberta', label: 'EXPEDIENTE', className: 'world-day' },
+  { name: 'Hora do cafezinho', label: 'HORA DOURADA', className: 'world-sunset' },
+  { name: 'Plantão neon', label: 'MODO NEON', className: 'world-neon' }
+]
+
 const statusOptions = [
   { value: 'ALL', label: 'Todos os Colegas' },
   { value: 'PAID', label: 'Quitados (Paga-Lanches)' },
@@ -99,9 +142,31 @@ const selectedReceipt = ref(null)
 const joinModalOpen = ref(false)
 const funnyExcuse = ref('"Não paguei ainda porque estou fazendo jejum intermitente de cafeína..."')
 const funnyBanner = ref(FUNNY_BANNERS[0])
+const loginSatirePhrase = ref(pickLoginSatirePhrase())
+const savedClicker = loadClickerSave()
+const coffeeCoins = ref(savedClicker.coins)
+const totalBrewed = ref(savedClicker.total)
+const sceneVariant = ref(savedClicker.sceneVariant)
+const coinFes = ref(savedClicker.coinFes)
+const rebirths = ref(savedClicker.rebirths)
+const shopView = ref('upgrades')
+const rebirthConfirming = ref(false)
+const gameStatus = ref('Toque na xícara para preparar')
+const clickBursts = ref([])
+const clickerUpgrades = reactive(CLICKER_UPGRADE_CATALOG.map((upgrade) => ({
+  ...upgrade,
+  owned: Number(savedClicker.upgrades?.[upgrade.id] || 0)
+})))
+const skillTree = reactive(SKILL_TREE_CATALOG.map((skill) => ({
+  ...skill,
+  level: Number(savedClicker.skills?.[skill.id] || 0)
+})))
 const toasts = ref([])
 let unwatchPaymentRequests = () => {}
 let paymentRequestsReady = false
+let funnyBannerTimer = null
+let clickerTimer = null
+let clickerSaveTimer = null
 
 const paidMembers = computed(() => members.value.filter((member) => member.status === 'PAID'))
 const pendingMembers = computed(() => members.value.filter((member) => member.status === 'PENDING'))
@@ -120,6 +185,30 @@ const pixPayload = computed(() => buildPixPayload())
 const qrUrl = computed(() => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixPayload.value)}&color=1F120B&bgcolor=FFFDF9`)
 const adminUnlocked = computed(() => Boolean(adminUser.value))
 const signedInWithWrongAccount = computed(() => Boolean(currentUser.value && !adminUnlocked.value))
+const isSignedIn = computed(() => Boolean(currentUser.value))
+const permanentMultiplier = computed(() => {
+  const skillBonus = skillTree.reduce((total, skill) => total + ((skill.globalBonus || 0) * skill.level), 0)
+  return 1 + skillBonus + (rebirths.value * 0.05)
+})
+const clickSkillMultiplier = computed(() => 1 + skillTree.reduce((total, skill) => total + ((skill.clickBonus || 0) * skill.level), 0))
+const autoSkillMultiplier = computed(() => 1 + skillTree.reduce((total, skill) => total + ((skill.autoBonus || 0) * skill.level), 0))
+const upgradeDiscount = computed(() => Math.min(0.35, skillTree.reduce((total, skill) => total + ((skill.discountBonus || 0) * skill.level), 0)))
+const criticalChance = computed(() => Math.min(0.4, skillTree.reduce((total, skill) => total + ((skill.criticalBonus || 0) * skill.level), 0)))
+const clickPower = computed(() => (1 + clickerUpgrades.reduce((total, upgrade) => total + (upgrade.clickBonus * upgrade.owned), 0)) * clickSkillMultiplier.value * permanentMultiplier.value)
+const autoBrew = computed(() => clickerUpgrades.reduce((total, upgrade) => total + (upgrade.autoBonus * upgrade.owned), 0) * autoSkillMultiplier.value * permanentMultiplier.value)
+const clickerLevel = computed(() => Math.floor(Math.sqrt(totalBrewed.value / 45)) + 1)
+const levelStart = computed(() => 45 * Math.pow(clickerLevel.value - 1, 2))
+const levelTarget = computed(() => 45 * Math.pow(clickerLevel.value, 2))
+const levelProgress = computed(() => {
+  const range = levelTarget.value - levelStart.value
+  return Math.min(100, Math.max(0, ((totalBrewed.value - levelStart.value) / range) * 100))
+})
+const currentWorld = computed(() => WORLD_STAGES[Math.min(WORLD_STAGES.length - 1, Math.floor((clickerLevel.value - 1) / 3))])
+const worldClass = computed(() => currentWorld.value.className)
+const ownedUpgradeCount = computed(() => clickerUpgrades.reduce((total, upgrade) => total + upgrade.owned, 0))
+const canRebirth = computed(() => clickerLevel.value >= REBIRTH_LEVEL)
+const rebirthReward = computed(() => canRebirth.value ? Math.max(1, Math.floor(Math.sqrt(totalBrewed.value / REBIRTH_THRESHOLD))) : 0)
+const rebirthProgress = computed(() => Math.min(100, (totalBrewed.value / REBIRTH_THRESHOLD) * 100))
 const filteredMembers = computed(() => {
   const search = searchMember.value.trim().toLowerCase()
   return members.value.filter((member) => {
@@ -174,17 +263,261 @@ onMounted(async () => {
     loading.value = false
   }
 
-  setInterval(() => {
+  funnyBannerTimer = window.setInterval(() => {
     funnyBanner.value = FUNNY_BANNERS[Math.floor(Math.random() * FUNNY_BANNERS.length)]
   }, 5000)
+
+  clickerTimer = window.setInterval(() => {
+    if (!autoBrew.value) return
+    addCoffee(autoBrew.value / 4, false)
+  }, 250)
+
+  clickerSaveTimer = window.setInterval(saveClickerProgress, 1000)
 })
 
-onBeforeUnmount(() => unwatchPaymentRequests())
+onBeforeUnmount(() => {
+  unwatchPaymentRequests()
+  window.clearInterval(funnyBannerTimer)
+  window.clearInterval(clickerTimer)
+  window.clearInterval(clickerSaveTimer)
+  saveClickerProgress()
+})
 
 function requireAdmin() {
   if (adminUnlocked.value) return true
   showToast('Entre com o Gmail do Mestre do Cafe para alterar o painel.', 'error')
   return false
+}
+
+function requireSignedIn() {
+  if (isSignedIn.value) return true
+  showToast('Entre com Google para usar o Cafe Pass.', 'error')
+  return false
+}
+
+function pickLoginSatirePhrase() {
+  const storageKey = 'passcafe_last_login_phrase'
+  let storage = null
+  let lastIndex = -1
+
+  try {
+    storage = typeof sessionStorage === 'undefined' ? null : sessionStorage
+    lastIndex = Number(storage?.getItem(storageKey) ?? -1)
+  } catch {
+    storage = null
+  }
+
+  let nextIndex = Math.floor(Math.random() * LOGIN_SATIRE_PHRASES.length)
+
+  if (LOGIN_SATIRE_PHRASES.length > 1 && nextIndex === lastIndex) {
+    nextIndex = (nextIndex + 1) % LOGIN_SATIRE_PHRASES.length
+  }
+
+  try {
+    storage?.setItem(storageKey, String(nextIndex))
+  } catch {
+    // Browsers can block storage; the phrase still works as a plain random pick.
+  }
+
+  return LOGIN_SATIRE_PHRASES[nextIndex]
+}
+
+function loadClickerSave() {
+  const emptySave = { coins: 0, total: 0, sceneVariant: 0, coinFes: 0, rebirths: 0, upgrades: {}, skills: {} }
+  try {
+    const saved = JSON.parse(localStorage.getItem(CLICKER_STORAGE_KEY) || 'null')
+    if (!saved) return emptySave
+    return {
+      coins: Math.max(0, Number(saved.coins) || 0),
+      total: Math.max(0, Number(saved.total) || 0),
+      sceneVariant: Math.max(0, Number(saved.sceneVariant) || 0),
+      coinFes: Math.max(0, Number(saved.coinFes) || 0),
+      rebirths: Math.max(0, Number(saved.rebirths) || 0),
+      upgrades: saved.upgrades || {},
+      skills: saved.skills || {}
+    }
+  } catch {
+    return emptySave
+  }
+}
+
+function saveClickerProgress() {
+  try {
+    const upgrades = Object.fromEntries(clickerUpgrades.map((upgrade) => [upgrade.id, upgrade.owned]))
+    const skills = Object.fromEntries(skillTree.map((skill) => [skill.id, skill.level]))
+    localStorage.setItem(CLICKER_STORAGE_KEY, JSON.stringify({
+      coins: coffeeCoins.value,
+      total: totalBrewed.value,
+      sceneVariant: sceneVariant.value,
+      coinFes: coinFes.value,
+      rebirths: rebirths.value,
+      upgrades,
+      skills
+    }))
+  } catch {
+    // The game remains playable when browser storage is unavailable.
+  }
+}
+
+function formatGameNumber(value) {
+  const amount = Math.floor(Number(value) || 0)
+  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`
+  if (amount >= 1_000) return `${(amount / 1_000).toFixed(1)}K`
+  return amount.toLocaleString('pt-BR')
+}
+
+function addCoffee(amount, announceLevel = true) {
+  const previousLevel = clickerLevel.value
+  coffeeCoins.value += amount
+  totalBrewed.value += amount
+  const leveledUp = clickerLevel.value > previousLevel
+
+  if (leveledUp) {
+    sceneVariant.value += 1
+    gameStatus.value = `Nível ${clickerLevel.value}! Novo cenário desbloqueado`
+    if (announceLevel) playPowerUpSound()
+  }
+
+  return leveledUp
+}
+
+function brewCoffee(event) {
+  const critical = criticalChance.value > 0 && Math.random() < criticalChance.value
+  const earned = clickPower.value * (critical ? 5 : 1)
+  const leveledUp = addCoffee(earned)
+  if (!leveledUp) gameStatus.value = critical
+    ? `DOSE CRÍTICA! +${formatGameNumber(earned)}`
+    : `Expresso perfeito! +${formatGameNumber(earned)}`
+  const burst = {
+    id: `${Date.now()}-${Math.random()}`,
+    x: event.offsetX,
+    y: event.offsetY,
+    value: earned,
+    critical
+  }
+  clickBursts.value.push(burst)
+  window.setTimeout(() => {
+    clickBursts.value = clickBursts.value.filter((item) => item.id !== burst.id)
+  }, 700)
+  playCoinSound()
+}
+
+function upgradeCost(upgrade) {
+  return Math.max(1, Math.floor(upgrade.baseCost * Math.pow(1.68, upgrade.owned) * (1 - upgradeDiscount.value)))
+}
+
+function buyClickerUpgrade(upgrade) {
+  const cost = upgradeCost(upgrade)
+  if (coffeeCoins.value < cost) {
+    gameStatus.value = `Faltam ${formatGameNumber(cost - coffeeCoins.value)} cafés`
+    playBumpSound()
+    return
+  }
+
+  coffeeCoins.value -= cost
+  upgrade.owned += 1
+  sceneVariant.value += 1
+  gameStatus.value = `${upgrade.name} atualizado para o nível ${upgrade.owned}`
+  saveClickerProgress()
+  playPowerUpSound()
+}
+
+function skillCost(skill) {
+  return skill.baseCost + skill.level
+}
+
+function findSkill(skillId) {
+  return skillTree.find((skill) => skill.id === skillId)
+}
+
+function isSkillUnlocked(skill) {
+  if (!skill.requires) return true
+  return (findSkill(skill.requires.id)?.level || 0) >= skill.requires.level
+}
+
+function buySkill(skill) {
+  if (!isSkillUnlocked(skill) || skill.level >= skill.maxLevel) {
+    playBumpSound()
+    return
+  }
+
+  const cost = skillCost(skill)
+  if (coinFes.value < cost) {
+    gameStatus.value = `Você precisa de mais ${cost - coinFes.value} CoinFé`
+    playBumpSound()
+    return
+  }
+
+  coinFes.value -= cost
+  skill.level += 1
+  sceneVariant.value += 1
+  gameStatus.value = `${skill.name} desbloqueada no nível ${skill.level}`
+  saveClickerProgress()
+  playPowerUpSound()
+}
+
+function requestRebirth() {
+  if (!canRebirth.value) {
+    gameStatus.value = `Chegue ao nível ${REBIRTH_LEVEL} para renascer`
+    playBumpSound()
+    return
+  }
+
+  if (!rebirthConfirming.value) {
+    rebirthConfirming.value = true
+    gameStatus.value = 'Confirme o renascimento: cafés e upgrades serão reiniciados'
+    playOpenSound()
+    window.setTimeout(() => { rebirthConfirming.value = false }, 5000)
+    return
+  }
+
+  const reward = rebirthReward.value
+  coinFes.value += reward
+  rebirths.value += 1
+  coffeeCoins.value = 0
+  totalBrewed.value = 0
+  clickerUpgrades.forEach((upgrade) => { upgrade.owned = 0 })
+  rebirthConfirming.value = false
+  sceneVariant.value += 1
+  shopView.value = 'skills'
+  gameStatus.value = `Renascimento ${rebirths.value} concluído! +${reward} CoinFé${reward > 1 ? 's' : ''}`
+  saveClickerProgress()
+  playPowerUpSound()
+}
+
+function currentActor() {
+  return {
+    uid: currentUser.value?.uid || null,
+    email: currentUser.value?.email || null,
+    name: currentUser.value?.displayName || currentUser.value?.email || null
+  }
+}
+
+function withMemberAudit(member, existingMember = null) {
+  const actor = currentActor()
+  const now = new Date().toISOString()
+  return {
+    ...member,
+    createdByUid: existingMember?.createdByUid || member.createdByUid || actor.uid,
+    createdByEmail: existingMember?.createdByEmail || member.createdByEmail || actor.email,
+    createdAt: existingMember?.createdAt || member.createdAt || now,
+    updatedByUid: actor.uid,
+    updatedByEmail: actor.email,
+    updatedAt: now
+  }
+}
+
+async function auditAction(action, details = {}) {
+  const actor = currentActor()
+  await createAuditLog({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    action,
+    actorUid: actor.uid,
+    actorEmail: actor.email,
+    actorName: actor.name,
+    createdAt: new Date().toISOString(),
+    details
+  })
 }
 
 function loadLocalSettings() {
@@ -271,12 +604,14 @@ function buildPixPayload() {
   return `${payloadWithoutCrc}${crc16(payloadWithoutCrc)}`
 }
 
-async function persistMember(member) {
+async function persistMember(member, existingMember = null) {
+  Object.assign(member, withMemberAudit(member, existingMember))
   saveLocalState()
   await saveMember(member)
 }
 
 async function requestPaymentApproval(member) {
+  const actor = currentActor()
   const request = {
     id: `${member.id}-${Date.now()}`,
     memberId: member.id,
@@ -287,18 +622,30 @@ async function requestPaymentApproval(member) {
     status: 'PENDING',
     requestedAt: new Date().toISOString(),
     reviewedAt: null,
-    reviewedBy: null
+    reviewedBy: null,
+    requestedByUid: actor.uid,
+    requestedByEmail: actor.email,
+    requestedByName: actor.name
   }
 
   await createPaymentRequest(request)
+  await auditAction('PAYMENT_REQUEST_CREATED', {
+    requestId: request.id,
+    memberId: member.id,
+    memberName: member.name,
+    amount: request.amount,
+    month: request.month
+  })
 }
 
 async function handleUserPayment() {
+  if (!requireSignedIn()) return
   const name = userPayment.name.trim()
   const dept = userPayment.dept.trim() || 'Geral'
   if (!name) return
 
   let member = members.value.find((item) => item.name.toLowerCase() === name.toLowerCase())
+  const existingMember = member ? { ...member } : null
   if (member) {
     if (member.status === 'PAID') {
       showToast(`${member.name} já está cafeinado oficialmente.`, 'info')
@@ -318,7 +665,7 @@ async function handleUserPayment() {
     members.value.push(member)
   }
 
-  await persistMember(member)
+  await persistMember(member, existingMember)
   await requestPaymentApproval(member)
   showToast(`Pedido enviado para a brigada do café. Agora é perícia do Pix!`, 'success')
   playMailSound()
@@ -327,8 +674,10 @@ async function handleUserPayment() {
 }
 
 async function markAsPaidFromList(id) {
+  if (!requireSignedIn()) return
   const member = members.value.find((item) => item.id === id)
   if (!member) return
+  const existingMember = { ...member }
   if (member.status === 'PENDING') {
     showToast(`${member.name} já está aguardando carimbo da brigada.`, 'info')
     playBumpSound()
@@ -336,16 +685,22 @@ async function markAsPaidFromList(id) {
   }
   member.status = 'PENDING'
   member.paidAt = null
-  await persistMember(member)
+  await persistMember(member, existingMember)
   await requestPaymentApproval(member)
   showToast(`${member.name} entrou na fila de conferência do Pix.`, 'success')
   playMailSound()
 }
 
 async function removeMember(id) {
+  if (!requireSignedIn()) return
   const member = members.value.find((item) => item.id === id)
   members.value = members.value.filter((item) => item.id !== id)
   saveLocalState()
+  await auditAction('MEMBER_REMOVED', {
+    memberId: id,
+    memberName: member?.name || null,
+    memberDept: member?.dept || null
+  })
   await deleteFirestoreMember(id)
   if (member) showToast(`Colega ${member.name} saiu da vaquinha deste mês.`, 'info')
   playRemoveSound()
@@ -387,7 +742,7 @@ function authErrorMessage(error) {
   return 'Não foi possível entrar com o Google. Tente novamente.'
 }
 
-async function unlockAdmin() {
+async function signInToApp() {
   if (!hasFirebaseConfig) {
     showToast('Firebase ainda não configurado. Login Google indisponível.', 'error')
     playErrorSound()
@@ -408,12 +763,12 @@ async function unlockAdmin() {
         photoURL: credential.user.photoURL,
         role: 'MASTER'
       }
-      showToast('Painel do Mestre liberado com Google!', 'success')
+      showToast('Entrada liberada com Google. Perfil de Mestre reconhecido.', 'success')
       playAdminUnlockSound()
     } else {
       adminUser.value = null
-      showToast('Conta Google sem permissão de Mestre do Café.', 'error')
-      playErrorSound()
+      showToast('Entrada liberada com Google.', 'success')
+      playPowerUpSound()
     }
   } catch (error) {
     authError.value = authErrorMessage(error)
@@ -424,13 +779,17 @@ async function unlockAdmin() {
   }
 }
 
+async function unlockAdmin() {
+  await signInToApp()
+}
+
 async function lockAdmin() {
   await signOutUser()
   currentUser.value = null
   adminUser.value = null
   paymentRequests.value = []
   unwatchPaymentRequests()
-  showToast('Sessão do Mestre encerrada.', 'info')
+  showToast('Sessão encerrada.', 'info')
   playLockSound()
 }
 
@@ -469,7 +828,8 @@ async function refreshPaymentRequests() {
 }
 
 async function approvePaymentRequest(request) {
-  const member = members.value.find((item) => item.id === request.memberId) || {
+  const existingMember = members.value.find((item) => item.id === request.memberId)
+  const member = existingMember || {
     id: request.memberId,
     name: request.name,
     dept: request.dept || 'Geral',
@@ -484,7 +844,7 @@ async function approvePaymentRequest(request) {
   member.paidAt = nowFormatted()
   if (wasNewMember) members.value.push(member)
 
-  await persistMember(member)
+  await persistMember(member, existingMember ? { ...existingMember } : null)
   await updatePaymentRequest(request.id, {
     ...request,
     status: 'APPROVED',
@@ -496,6 +856,11 @@ async function approvePaymentRequest(request) {
       ? { ...item, status: 'APPROVED', reviewedAt: new Date().toISOString(), reviewedBy: adminUser.value?.email }
       : item
   ))
+  await auditAction('PAYMENT_REQUEST_APPROVED', {
+    requestId: request.id,
+    memberId: request.memberId,
+    memberName: request.name
+  })
   showToast(`${request.name} aprovado. Café liberado sem recurso ao RH.`, 'success')
   playSuccessSound()
 }
@@ -503,9 +868,10 @@ async function approvePaymentRequest(request) {
 async function rejectPaymentRequest(request) {
   const member = members.value.find((item) => item.id === request.memberId)
   if (member && member.status === 'PENDING') {
+    const existingMember = { ...member }
     member.status = 'UNPAID'
     member.paidAt = null
-    await persistMember(member)
+    await persistMember(member, existingMember)
   }
 
   await updatePaymentRequest(request.id, {
@@ -519,6 +885,11 @@ async function rejectPaymentRequest(request) {
       ? { ...item, status: 'REJECTED', reviewedAt: new Date().toISOString(), reviewedBy: adminUser.value?.email }
       : item
   ))
+  await auditAction('PAYMENT_REQUEST_REJECTED', {
+    requestId: request.id,
+    memberId: request.memberId,
+    memberName: request.name
+  })
   showToast(`${request.name} recusado. O Pix não convenceu o conselho do coador.`, 'error')
   playErrorSound()
 }
@@ -534,6 +905,7 @@ async function saveAdminSettings() {
   })
   saveLocalState()
   await saveSettings({ ...settings })
+  await auditAction('SETTINGS_UPDATED', { settings: { ...settings } })
   showToast('Novas configurações salvas com sucesso!', 'success')
   playSaveSound()
 }
@@ -545,6 +917,11 @@ async function addMemberFromAdmin() {
   const member = { id: Date.now().toString(), name, dept: adminNewMember.dept.trim() || 'Geral', status: 'UNPAID', paidAt: null }
   members.value.push(member)
   await persistMember(member)
+  await auditAction('MEMBER_ADDED_BY_ADMIN', {
+    memberId: member.id,
+    memberName: member.name,
+    memberDept: member.dept
+  })
   adminNewMember.name = ''
   adminNewMember.dept = ''
   showToast(`${name} entrou na lista do café.`, 'success')
@@ -552,6 +929,7 @@ async function addMemberFromAdmin() {
 }
 
 async function handleJoinSubmit() {
+  if (!requireSignedIn()) return
   const name = joinForm.name.trim()
   if (!name) return
   if (members.value.some((member) => member.name.toLowerCase() === name.toLowerCase())) {
@@ -563,6 +941,11 @@ async function handleJoinSubmit() {
   const member = { id: Date.now().toString(), name, dept: joinForm.dept.trim() || 'Geral', status: 'UNPAID', paidAt: null }
   members.value.push(member)
   await persistMember(member)
+  await auditAction('MEMBER_JOINED', {
+    memberId: member.id,
+    memberName: member.name,
+    memberDept: member.dept
+  })
   joinForm.name = ''
   joinForm.dept = ''
   joinModalOpen.value = false
@@ -572,9 +955,10 @@ async function handleJoinSubmit() {
 
 async function resetMonthlyPayments() {
   if (!requireAdmin()) return
-  members.value = members.value.map((member) => ({ ...member, status: 'UNPAID', paidAt: null }))
+  members.value = members.value.map((member) => withMemberAudit({ ...member, status: 'UNPAID', paidAt: null }, member))
   saveLocalState()
   await saveMembers(members.value)
+  await auditAction('MONTHLY_PAYMENTS_RESET', { memberCount: members.value.length })
   selectedReceipt.value = null
   showToast('Pagamentos reiniciados para o novo mês.', 'info')
   playResetSound()
@@ -673,7 +1057,202 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
       </div>
     </div>
 
-    <header class="bg-mocha text-crema comic-border-lg border-b-8 border-espresso shadow-comic-lg sticky top-0 z-40">
+    <main
+      v-if="!authReady || !isSignedIn"
+      class="clicker-login"
+      :class="[worldClass, `scene-variant-${sceneVariant % 4}`]"
+    >
+      <div class="pixel-world" aria-hidden="true">
+        <div class="pixel-sun"></div>
+        <div class="pixel-cloud cloud-one"></div>
+        <div class="pixel-cloud cloud-two"></div>
+        <div class="pixel-stars"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="pixel-city city-back"></div>
+        <div class="pixel-city city-front"></div>
+        <div class="pixel-street"></div>
+        <div v-if="ownedUpgradeCount" class="delivery-scooter"></div>
+      </div>
+
+      <header class="clicker-topbar">
+        <div class="clicker-brand-mark">
+          <Icon icon="pixelarticons:coffee" />
+          <span>CAFÉ PASS</span>
+        </div>
+        <div class="clicker-meta">
+          <div class="coinfe-chip" title="Moeda permanente adquirida ao renascer">
+            <Icon icon="pixelarticons:coin" />
+            <strong>{{ formatGameNumber(coinFes) }}</strong> <span>COINFÉS</span>
+          </div>
+          <div class="world-chip">
+            <span class="world-live-dot"></span>
+            {{ currentWorld.label }} · NÍVEL {{ clickerLevel }}
+          </div>
+        </div>
+      </header>
+
+      <div class="clicker-layout">
+        <section class="access-panel">
+          <div class="access-eyebrow">CAFETERIA DA FIRMA</div>
+          <h1>CAFÉ<br><span>PASS</span></h1>
+          <p class="login-satire">{{ loginSatirePhrase }}</p>
+
+          <div class="access-divider"><span>CONTINUAR</span></div>
+
+          <button type="button" class="google-login-btn" :disabled="!authReady || authLoading || !hasFirebaseConfig" @click="signInToApp">
+            <svg class="google-g" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.02 1.53 7.4 2.81l5.4-5.27C33.49 3.95 29.17 2 24 2 14.62 2 6.51 7.38 2.56 15.22l6.63 5.15C10.77 15.68 16.03 9.5 24 9.5z" />
+              <path fill="#4285F4" d="M46.5 24.5c0-1.63-.15-3.2-.42-4.7H24v8.9h12.62c-.54 2.9-2.18 5.36-4.66 7.01l7.21 5.59c4.22-3.89 7.33-9.62 7.33-16.8z" />
+              <path fill="#FBBC05" d="M9.19 28.37A14.44 14.44 0 0 1 8.43 24c0-1.52.27-2.99.76-4.37l-6.63-5.15A21.94 21.94 0 0 0 .25 24c0 3.5.84 6.81 2.31 9.52l6.63-5.15z" />
+              <path fill="#34A853" d="M24 46c6.05 0 11.13-1.99 14.84-5.42l-7.21-5.59c-2 1.34-4.56 2.13-7.63 2.13-5.84 0-10.79-3.94-12.56-9.25l-6.63 5.15C8.73 40.86 16.84 46 24 46z" />
+            </svg>
+            <span>{{ authLoading ? 'Conectando...' : 'Entrar com Google' }}</span>
+            <Icon icon="pixelarticons:chevron-right" class="google-arrow" />
+          </button>
+          <p v-if="authError" class="access-error">{{ authError }}</p>
+          <p v-else-if="!hasFirebaseConfig" class="access-error">Configure o .env do Firebase para liberar o login Google.</p>
+          <p v-else-if="!authReady" class="access-loading">Verificando sessão...</p>
+        </section>
+
+        <section class="brew-panel" aria-label="Café Clicker">
+          <div class="brew-heading">
+            <div>
+              <span class="brew-kicker">{{ currentWorld.name }}</span>
+              <h2>ESTAÇÃO DE PREPARO</h2>
+            </div>
+            <span class="brew-rate">+{{ formatGameNumber(autoBrew) }}/s</span>
+          </div>
+
+          <div class="game-stats">
+            <div><span>SALDO</span><strong>{{ formatGameNumber(coffeeCoins) }}</strong></div>
+            <div><span>POR CLIQUE</span><strong>+{{ formatGameNumber(clickPower) }}</strong></div>
+            <div><span>PRODUZIDOS</span><strong>{{ formatGameNumber(totalBrewed) }}</strong></div>
+          </div>
+
+          <div class="brew-stage">
+            <div v-if="clickerUpgrades[1].owned" class="barista-bot" aria-hidden="true"><i></i><b></b></div>
+            <div v-if="clickerUpgrades[0].owned" class="pixel-grinder" aria-hidden="true"><i></i></div>
+            <div v-if="clickerUpgrades[3].owned" class="pro-machine" aria-hidden="true"><i></i><b></b></div>
+            <div v-if="clickerLevel >= 3" class="level-companion sugar-buddy" title="Cubinho - desbloqueado no nível 3"><i></i><b></b></div>
+            <div v-if="clickerLevel >= 5" class="level-companion cookie-buddy" title="Biscoito - desbloqueado no nível 5"><i></i><b></b><em></em></div>
+            <div v-if="clickerLevel >= 7" class="level-companion milk-buddy" title="Leitinho - desbloqueado no nível 7"><i></i><b></b></div>
+            <div v-if="clickerLevel >= 9" class="level-companion bean-buddy" title="Grãozinho - desbloqueado no nível 9"><i></i><b></b></div>
+            <div v-if="clickerLevel >= 12" class="level-companion donut-buddy" title="Donut - desbloqueado no nível 12"><i></i><b></b></div>
+            <button type="button" class="brew-button" aria-label="Preparar café" @click="brewCoffee">
+              <span class="cup-steam steam-a"></span>
+              <span class="cup-steam steam-b"></span>
+              <span class="cup-steam steam-c"></span>
+              <span class="brew-cup"><Icon icon="pixelarticons:coffee" /></span>
+              <span class="tap-label">CLIQUE PARA PREPARAR</span>
+              <span
+                v-for="burst in clickBursts"
+                :key="burst.id"
+                class="coffee-burst"
+                :class="{ 'is-critical': burst.critical }"
+                :style="{ left: `${burst.x}px`, top: `${burst.y}px` }"
+              >+{{ formatGameNumber(burst.value) }}</span>
+            </button>
+          </div>
+
+          <div class="level-track">
+            <div class="level-copy"><span>{{ gameStatus }}</span><strong>{{ Math.floor(levelProgress) }}%</strong></div>
+            <div class="level-bar"><i :style="{ width: `${levelProgress}%` }"></i></div>
+            <div class="level-goal">PRÓXIMO NÍVEL EM {{ formatGameNumber(levelTarget - totalBrewed) }} CAFÉS</div>
+          </div>
+        </section>
+
+        <aside class="upgrade-shop">
+          <div class="shop-heading">
+            <div>
+              <span>{{ shopView === 'upgrades' ? 'POWER-UPS' : 'PROGRESSO PERMANENTE' }}</span>
+              <h2>{{ shopView === 'upgrades' ? 'LOJA DE UPGRADES' : 'ÁRVORE DE HABILIDADES' }}</h2>
+            </div>
+            <Icon :icon="shopView === 'upgrades' ? 'pixelarticons:shopping-bag' : 'pixelarticons:tree'" />
+          </div>
+
+          <div class="shop-tabs" role="tablist" aria-label="Progressão do clicker">
+            <button type="button" :class="{ active: shopView === 'upgrades' }" @click="shopView = 'upgrades'">
+              <Icon icon="pixelarticons:shopping-bag" /> UPGRADES
+            </button>
+            <button type="button" :class="{ active: shopView === 'skills' }" @click="shopView = 'skills'">
+              <Icon icon="pixelarticons:tree" /> HABILIDADES
+            </button>
+          </div>
+
+          <div v-if="shopView === 'upgrades'" class="upgrade-list">
+            <button
+              v-for="upgrade in clickerUpgrades"
+              :key="upgrade.id"
+              type="button"
+              class="upgrade-button"
+              :class="{ 'can-buy': coffeeCoins >= upgradeCost(upgrade) }"
+              @click="buyClickerUpgrade(upgrade)"
+            >
+              <span class="upgrade-icon"><Icon :icon="upgrade.icon" /></span>
+              <span class="upgrade-info">
+                <strong>{{ upgrade.name }}</strong>
+                <small>{{ upgrade.description }}</small>
+              </span>
+              <span class="upgrade-price">
+                <b>{{ formatGameNumber(upgradeCost(upgrade)) }}</b>
+                <small>NV. {{ upgrade.owned }}</small>
+              </span>
+            </button>
+          </div>
+
+          <div v-else class="skill-tree">
+            <div class="coinfe-balance">
+              <Icon icon="pixelarticons:coin" />
+              <span>Saldo permanente</span>
+              <strong>{{ formatGameNumber(coinFes) }} CoinFés</strong>
+            </div>
+            <button
+              v-for="skill in skillTree"
+              :key="skill.id"
+              type="button"
+              class="skill-node"
+              :class="[`branch-${skill.branch}`, { locked: !isSkillUnlocked(skill), maxed: skill.level >= skill.maxLevel }]"
+              :disabled="!isSkillUnlocked(skill)"
+              @click="buySkill(skill)"
+            >
+              <span class="skill-node-icon">
+                <Icon :icon="isSkillUnlocked(skill) ? skill.icon : 'pixelarticons:lock'" />
+              </span>
+              <span class="skill-node-copy">
+                <strong>{{ skill.name }}</strong>
+                <small>{{ skill.description }}</small>
+              </span>
+              <span class="skill-node-level">
+                <b>{{ skill.level }}/{{ skill.maxLevel }}</b>
+                <small v-if="skill.level < skill.maxLevel">{{ skillCost(skill) }} CF</small>
+                <small v-else>MAX</small>
+              </span>
+            </button>
+          </div>
+
+          <div class="rebirth-card" :class="{ ready: canRebirth }">
+            <div class="rebirth-title">
+              <span><Icon icon="pixelarticons:repeat" /> RENASCIMENTO {{ rebirths }}</span>
+              <strong v-if="canRebirth">+{{ rebirthReward }} CoinFé{{ rebirthReward > 1 ? 's' : '' }}</strong>
+              <strong v-else>NÍVEL {{ REBIRTH_LEVEL }}</strong>
+            </div>
+            <div class="rebirth-bar"><i :style="{ width: `${rebirthProgress}%` }"></i></div>
+            <button type="button" class="rebirth-button" :class="{ confirming: rebirthConfirming }" @click="requestRebirth">
+              <Icon :icon="canRebirth ? 'pixelarticons:repeat' : 'pixelarticons:lock'" />
+              {{ rebirthConfirming ? 'CONFIRMAR RENASCIMENTO' : canRebirth ? 'RENASCER AGORA' : `DESBLOQUEIA NO NÍVEL ${REBIRTH_LEVEL}` }}
+            </button>
+          </div>
+
+          <div class="shop-tip">
+            <Icon :icon="shopView === 'upgrades' ? 'pixelarticons:trending-up' : 'pixelarticons:coin'" />
+            <span>{{ shopView === 'upgrades' ? 'Upgrades são reiniciados ao renascer.' : 'Habilidades e CoinFés permanecem após cada renascimento.' }}</span>
+          </div>
+        </aside>
+      </div>
+
+      <div class="scene-flash" :key="sceneVariant" aria-hidden="true"></div>
+    </main>
+
+    <header v-if="authReady && isSignedIn" class="bg-mocha text-crema comic-border-lg border-b-8 border-espresso shadow-comic-lg sticky top-0 z-40">
       <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3 cursor-pointer select-none" @click="switchTab('pay')">
           <div class="relative w-12 h-12 bg-caramel rounded-2xl comic-border flex items-center justify-center shadow-comic">
@@ -700,14 +1279,22 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
             <span class="nav-icon"><Icon :icon="tab[1]" /></span> {{ tab[2] }}
           </button>
         </nav>
+
+        <div class="flex items-center gap-2 bg-roast text-latte rounded-xl comic-border px-3 py-2 text-xs font-bold">
+          <Icon icon="pixelarticons:user" class="text-caramel text-lg" />
+          <span class="max-w-[180px] truncate">{{ currentUser.displayName || currentUser.email }}</span>
+          <button @click="lockAdmin" title="Sair" class="bg-chili text-foam rounded-lg comic-border px-2 py-1 inline-flex items-center">
+            <Icon icon="pixelarticons:logout" />
+          </button>
+        </div>
       </div>
     </header>
 
-    <div class="bg-caramel comic-border-lg border-t-0 border-x-0 py-1.5 px-4 text-center font-bold text-xs sm:text-sm text-espresso overflow-hidden shadow-sm">
+    <div v-if="authReady && isSignedIn" class="bg-caramel comic-border-lg border-t-0 border-x-0 py-1.5 px-4 text-center font-bold text-xs sm:text-sm text-espresso overflow-hidden shadow-sm">
       <span class="inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:warning-box" class="text-lg" /> {{ funnyBanner }}</span>
     </div>
 
-    <main class="max-w-5xl mx-auto px-4 py-6 flex-1 w-full">
+    <main v-if="authReady && isSignedIn" class="max-w-5xl mx-auto px-4 py-6 flex-1 w-full">
       <div v-if="loading" class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl text-center font-black">Carregando café...</div>
 
       <section v-show="!loading && activeTab === 'pay'" class="tab-content space-y-6">
@@ -1026,7 +1613,7 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
       </div>
     </div>
 
-    <footer class="bg-roast text-latte comic-border-lg border-b-0 border-x-0 py-6 px-4 mt-auto">
+    <footer v-if="authReady && isSignedIn" class="bg-roast text-latte comic-border-lg border-b-0 border-x-0 py-6 px-4 mt-auto">
       <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left text-xs">
         <div class="flex items-center gap-3"><span class="text-3xl text-caramel"><Icon icon="pixelarticons:coffee" /></span><div><p class="font-bold text-foam text-sm">Café Pass - O Guardião do Coador</p><p class="text-latte/70">Feito para acabar com as briguinhas de quem tomou e não pagou.</p></div></div>
         <p class="font-mono text-caramel font-bold">Sem cota = Sem cafeína © 2026</p>
