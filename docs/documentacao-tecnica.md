@@ -140,10 +140,10 @@ Autenticacao do painel admin:
 
 ```text
 Firebase Authentication com provedor Google
-Mestre inicial: kelvindaniel1932@gmail.com
+O Mestre Supremo e identificado pelo UID protegido nas regras, sem publicar o e-mail.
 ```
 
-Contas adicionais podem ser autorizadas por `VITE_PASSCAFE_ADMIN_EMAILS`, usando e-mails separados por virgula.
+Contas adicionais sao convidadas e recebem cargo pelo Painel do Cafe.
 O provedor Google precisa estar habilitado no Firebase Authentication e o dominio do app precisa estar autorizado no Firebase Console.
 >>>>>>> Stashed changes
 
@@ -362,7 +362,7 @@ npm run preview
 <<<<<<< Updated upstream
 - O painel admin usa Firebase Authentication; o primeiro Mestre tambem precisa do documento `admins/{uid}` com `role: "MASTER"`.
 =======
-- O painel admin usa login Google no Firebase Auth e libera o acesso para os e-mails configurados em `VITE_PASSCAFE_ADMIN_EMAILS`.
+- O painel admin usa login Google e convites internos validados pelas regras do Firestore.
 >>>>>>> Stashed changes
 - O Firestore depende de regras de seguranca configuradas no console do Firebase.
 - O Tailwind esta sendo carregado por CDN; para producao mais robusta, pode valer migrar para Tailwind instalado no build.

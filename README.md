@@ -95,7 +95,6 @@ VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
-VITE_PASSCAFE_ADMIN_EMAILS=kelvindaniel1932@gmail.com
 ```
 
 Com essas variaveis preenchidas, o app usa:
@@ -158,13 +157,7 @@ docs/backend-firestore.md
 
 =======
 O acesso ao painel administrativo agora e feito com login Google pelo Firebase Authentication.
-O mestre inicial do cafe e:
-
-```text
-kelvindaniel1932@gmail.com
-```
-
-Para autorizar mais contas, configure `VITE_PASSCAFE_ADMIN_EMAILS` com e-mails separados por virgula.
+O Mestre Supremo e reconhecido pelo UID protegido nas regras. Outros acessos sao convidados, aceitos dentro do app e gerenciados pelo Painel do Cafe, sem Cloud Functions ou plano pago.
 No Firebase Console, habilite o provedor Google em Authentication e autorize o dominio usado pelo app.
 
 >>>>>>> Stashed changes

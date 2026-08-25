@@ -17,8 +17,11 @@ import {
   orderBy,
   query,
   setDoc,
+  where,
   writeBatch
 } from 'firebase/firestore'
+
+const SUPREME_MASTER_UID = 'OMjgQR2BTlR2UzheRiqF9KMT5Dk1'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -59,6 +62,153 @@ export async function signInWithGoogle() {
 
 export async function signOutUser() {
   if (auth) await signOut(auth)
+}
+
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function adminPayload(user, role, inviteId = null, protectedAccount = false) {
+  const now = new Date().toISOString()
+  return {
+    uid: user.uid,
+    email: normalizeEmail(user.email),
+    role,
+    inviteId,
+    protected: protectedAccount,
+    displayName: user.displayName || '',
+    photoURL: user.photoURL || '',
+    createdAt: now,
+    createdBy: null,
+    updatedAt: now,
+    updatedByUid: null
+  }
+}
+
+export async function loadMyAdminProfile(user) {
+  if (!db || !user?.uid) return null
+  const adminRef = doc(db, 'admins', user.uid)
+  let snapshot = await getDoc(adminRef)
+
+  if (user.uid === SUPREME_MASTER_UID) {
+    const existing = snapshot.exists() ? snapshot.data() : null
+    await setDoc(adminRef, {
+      ...adminPayload(user, 'MASTER', null, true),
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      createdBy: existing?.createdBy || 'bootstrap-interno'
+    })
+    snapshot = await getDoc(adminRef)
+  }
+
+  return snapshot.exists() ? { uid: snapshot.id, ...snapshot.data() } : null
+}
+
+export function watchMyAdminInvites(email, callback) {
+  if (!db || !email) {
+    callback([])
+    return () => {}
+  }
+  const normalizedEmail = normalizeEmail(email)
+  return onSnapshot(query(collection(db, 'adminInvites'), where('email', '==', normalizedEmail)), (snapshot) => {
+    callback(snapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .filter((invite) => invite.status === 'PENDING'))
+  })
+}
+
+export function watchMyAdminProfile(userId, callback) {
+  if (!db || !userId) {
+    callback(null)
+    return () => {}
+  }
+  return onSnapshot(doc(db, 'admins', userId), (snapshot) => {
+    callback(snapshot.exists() ? { uid: snapshot.id, ...snapshot.data() } : null)
+  })
+}
+
+export async function loadAdminManagement() {
+  if (!db) return { admins: [], invites: [] }
+  const [adminsSnapshot, invitesSnapshot] = await Promise.all([
+    getDocs(collection(db, 'adminDirectory')),
+    getDocs(collection(db, 'adminInvites'))
+  ])
+  return {
+    admins: adminsSnapshot.docs.map((item) => ({ uid: item.id, ...item.data() })),
+    invites: invitesSnapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .filter((invite) => invite.status === 'PENDING')
+  }
+}
+
+export async function createAdminInvite(email, role, actorUid) {
+  if (!db) throw new Error('Firestore não configurado.')
+  const normalizedEmail = normalizeEmail(email)
+  const [activeSnapshot, inviteSnapshot] = await Promise.all([
+    getDocs(query(collection(db, 'adminDirectory'), where('email', '==', normalizedEmail))),
+    getDocs(query(collection(db, 'adminInvites'), where('email', '==', normalizedEmail)))
+  ])
+  if (!activeSnapshot.empty) throw new Error('Esta conta já possui acesso administrativo.')
+  if (inviteSnapshot.docs.some((item) => item.data().status === 'PENDING')) {
+    throw new Error('Já existe um convite pendente para esta conta.')
+  }
+  const inviteRef = doc(collection(db, 'adminInvites'))
+  const invite = {
+    id: inviteRef.id,
+    email: normalizedEmail,
+    role,
+    status: 'PENDING',
+    createdByUid: actorUid,
+    invitedAt: new Date().toISOString(),
+    answeredAt: null,
+    claimedByUid: null
+  }
+  await setDoc(inviteRef, invite)
+  return { invite }
+}
+
+export async function acceptAdminInvite(invite, user) {
+  if (!db || !invite?.id || !user?.uid) throw new Error('Convite inválido.')
+  const batch = writeBatch(db)
+  const profile = adminPayload(user, invite.role, invite.id, false)
+  batch.set(doc(db, 'admins', user.uid), profile)
+  batch.set(doc(db, 'adminDirectory', user.uid), profile)
+  batch.update(doc(db, 'adminInvites', invite.id), {
+    status: 'ACCEPTED',
+    answeredAt: new Date().toISOString(),
+    claimedByUid: user.uid
+  })
+  await batch.commit()
+  return profile
+}
+
+export async function declineAdminInvite(inviteId, userId) {
+  if (!db || !inviteId || !userId) return
+  await setDoc(doc(db, 'adminInvites', inviteId), {
+    status: 'DECLINED',
+    answeredAt: new Date().toISOString(),
+    claimedByUid: userId
+  }, { merge: true })
+}
+
+export async function changeAdminRole(uid, role, actorUid) {
+  if (!db || !uid) return
+  const patch = { role, updatedAt: new Date().toISOString(), updatedByUid: actorUid }
+  const batch = writeBatch(db)
+  batch.set(doc(db, 'admins', uid), patch, { merge: true })
+  batch.set(doc(db, 'adminDirectory', uid), patch, { merge: true })
+  await batch.commit()
+}
+
+export async function removeAdminAccess(type, id) {
+  if (!db || !id) return
+  if (type === 'invite') {
+    await deleteDoc(doc(db, 'adminInvites', id))
+    return
+  }
+  const batch = writeBatch(db)
+  batch.delete(doc(db, 'admins', id))
+  batch.delete(doc(db, 'adminDirectory', id))
+  await batch.commit()
 }
 
 export async function loadSettings(defaultSettings) {

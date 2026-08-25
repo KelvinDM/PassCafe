@@ -2,6 +2,10 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSupremeUid(uid) {
+      return uid == 'OMjgQR2BTlR2UzheRiqF9KMT5Dk1';
+    }
+
     function adminDoc() {
       return get(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
@@ -23,6 +27,10 @@ service cloud.firestore {
       return isMaster() || isApprentice();
     }
 
+    function isProtectedAdmin() {
+      return hasCafeRole() && adminDoc().data.get('protected', false) == true;
+    }
+
     function isString(value) {
       return value is string && value.size() > 0 && value.size() <= 160;
     }
@@ -37,6 +45,62 @@ service cloud.firestore {
 
     function hasOnlyKeys(keys) {
       return request.resource.data.keys().hasOnly(keys);
+    }
+
+    function isValidAdmin(adminId) {
+      return request.resource.data.keys().hasOnly(['uid', 'email', 'role', 'inviteId', 'protected', 'displayName', 'photoURL', 'createdAt', 'createdBy', 'updatedAt', 'updatedByUid'])
+        && request.resource.data.uid == adminId
+        && isString(request.resource.data.email)
+        && request.resource.data.role in ['MASTER', 'APPRENTICE']
+        && isOptionalString(request.resource.data.get('inviteId', null))
+        && request.resource.data.protected is bool
+        && isOptionalString(request.resource.data.get('displayName', null))
+        && isOptionalString(request.resource.data.get('photoURL', null))
+        && isString(request.resource.data.createdAt)
+        && isOptionalString(request.resource.data.get('createdBy', null))
+        && isString(request.resource.data.updatedAt)
+        && isOptionalString(request.resource.data.get('updatedByUid', null));
+    }
+
+    function inviteForRequest() {
+      return get(/databases/$(database)/documents/adminInvites/$(request.resource.data.inviteId));
+    }
+
+    function isValidInviteClaim(adminId) {
+      return request.auth != null
+        && request.auth.uid == adminId
+        && isValidAdmin(adminId)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.protected == false
+        && request.resource.data.inviteId is string
+        && inviteForRequest().data.status == 'PENDING'
+        && inviteForRequest().data.email == request.auth.token.email
+        && inviteForRequest().data.role == request.resource.data.role
+        && getAfter(/databases/$(database)/documents/adminInvites/$(request.resource.data.inviteId)).data.status == 'ACCEPTED'
+        && getAfter(/databases/$(database)/documents/adminInvites/$(request.resource.data.inviteId)).data.claimedByUid == request.auth.uid;
+    }
+
+    function isValidSupremeProfile(adminId) {
+      return request.auth != null
+        && isSupremeUid(request.auth.uid)
+        && adminId == request.auth.uid
+        && isValidAdmin(adminId)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'MASTER'
+        && request.resource.data.protected == true
+        && request.resource.data.inviteId == null;
+    }
+
+    function isValidAdminInvite(inviteId) {
+      return request.resource.data.keys().hasOnly(['id', 'email', 'role', 'status', 'createdByUid', 'invitedAt', 'answeredAt', 'claimedByUid'])
+        && request.resource.data.id == inviteId
+        && isString(request.resource.data.email)
+        && request.resource.data.role in ['MASTER', 'APPRENTICE']
+        && request.resource.data.status in ['PENDING', 'ACCEPTED', 'DECLINED']
+        && isString(request.resource.data.createdByUid)
+        && isString(request.resource.data.invitedAt)
+        && isOptionalString(request.resource.data.answeredAt)
+        && isOptionalString(request.resource.data.claimedByUid);
     }
 
     function isValidSettings() {
@@ -99,17 +163,6 @@ service cloud.firestore {
           || resource.data.status != 'PAID');
     }
 
-    function isValidAdmin(adminId) {
-      return request.resource.data.keys().hasOnly(['uid', 'email', 'role', 'createdAt', 'createdBy'])
-        && request.resource.data.uid == adminId
-        && request.resource.data.email is string
-        && request.resource.data.email.size() > 3
-        && request.resource.data.email.size() <= 160
-        && request.resource.data.role in ['MASTER', 'APPRENTICE']
-        && request.resource.data.createdAt is string
-        && request.resource.data.createdBy is string;
-    }
-
     function isValidPaymentRequest(requestId) {
       return request.resource.data.keys().hasOnly(['id', 'memberId', 'name', 'dept', 'amount', 'month', 'status', 'requestedAt', 'reviewedAt', 'reviewedBy', 'requestedByUid', 'requestedByEmail', 'requestedByName'])
         && request.resource.data.id == requestId
@@ -139,7 +192,12 @@ service cloud.firestore {
         && request.resource.data.reviewedAt == null
         && request.resource.data.reviewedBy == null
         && request.resource.data.requestedByUid == request.auth.uid
-        && request.resource.data.requestedByEmail == request.auth.token.email
+        && (
+          request.resource.data.requestedByEmail == request.auth.token.email
+          || (isProtectedAdmin()
+            && request.resource.data.requestedByEmail == null
+            && request.resource.data.requestedByName == 'Mestre Supremo')
+        )
         && exists(/databases/$(database)/documents/passcafeMembers/$(request.resource.data.memberId))
         && get(/databases/$(database)/documents/passcafeMembers/$(request.resource.data.memberId)).data.createdByUid == request.auth.uid;
     }
@@ -150,7 +208,12 @@ service cloud.firestore {
         && request.resource.data.id is string
         && request.resource.data.action is string
         && request.resource.data.actorUid == request.auth.uid
-        && request.resource.data.actorEmail == request.auth.token.email
+        && (
+          request.resource.data.actorEmail == request.auth.token.email
+          || (isProtectedAdmin()
+            && request.resource.data.actorEmail == null
+            && request.resource.data.actorName == 'Mestre Supremo')
+        )
         && isOptionalString(request.resource.data.actorName)
         && request.resource.data.createdAt is string;
     }
@@ -203,9 +266,57 @@ service cloud.firestore {
     }
 
     match /admins/{adminId} {
-      allow read: if isCafeStaff();
-      allow create: if isMaster() && isValidAdmin(adminId);
-      allow update, delete: if false;
+      allow get: if request.auth != null && request.auth.uid == adminId;
+      allow list: if false;
+      allow create: if isValidSupremeProfile(adminId) || isValidInviteClaim(adminId);
+      allow update: if isValidSupremeProfile(adminId)
+        || (isMaster()
+          && adminId != request.auth.uid
+          && exists(/databases/$(database)/documents/adminDirectory/$(adminId))
+          && isValidAdmin(adminId)
+          && request.resource.data.protected == false
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt', 'updatedByUid'])
+          && request.resource.data.updatedByUid == request.auth.uid);
+      allow delete: if isMaster()
+        && adminId != request.auth.uid
+        && exists(/databases/$(database)/documents/adminDirectory/$(adminId))
+        && resource.data.get('protected', false) == false;
+    }
+
+    match /adminInvites/{inviteId} {
+      allow read: if isMaster()
+        || (request.auth != null && resource.data.email == request.auth.token.email);
+      allow create: if isMaster()
+        && isValidAdminInvite(inviteId)
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.answeredAt == null
+        && request.resource.data.claimedByUid == null;
+      allow update: if request.auth != null
+        && resource.data.status == 'PENDING'
+        && resource.data.email == request.auth.token.email
+        && isValidAdminInvite(inviteId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'answeredAt', 'claimedByUid'])
+        && request.resource.data.status in ['ACCEPTED', 'DECLINED']
+        && request.resource.data.claimedByUid == request.auth.uid;
+      allow delete: if isMaster();
+    }
+
+    match /adminDirectory/{adminId} {
+      allow read: if isMaster();
+      allow create: if isValidInviteClaim(adminId)
+        && getAfter(/databases/$(database)/documents/admins/$(adminId)).data.role == request.resource.data.role
+        && getAfter(/databases/$(database)/documents/admins/$(adminId)).data.email == request.resource.data.email;
+      allow update: if isMaster()
+        && adminId != request.auth.uid
+        && isValidAdmin(adminId)
+        && request.resource.data.protected == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt', 'updatedByUid'])
+        && request.resource.data.updatedByUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/admins/$(adminId)).data.role == request.resource.data.role;
+      allow delete: if isMaster()
+        && adminId != request.auth.uid
+        && get(/databases/$(database)/documents/admins/$(adminId)).data.get('protected', false) == false;
     }
 
     match /passcafe/settings {

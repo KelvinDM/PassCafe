@@ -8,15 +8,22 @@ import CafeSelect from './components/CafeSelect.vue'
 import FeatureIcon from './components/FeatureIcon.vue'
 import StatTile from './components/StatTile.vue'
 import {
+  acceptAdminInvite,
+  changeAdminRole as changeRemoteAdminRole,
+  createAdminInvite,
+  declineAdminInvite,
   deleteMember as deleteFirestoreMember,
   createAuditLog,
   createPaymentRequest,
   hasFirebaseConfig,
   loadClickerSave as loadFirestoreClickerSave,
+  loadAdminManagement as loadRemoteAdminManagement,
+  loadMyAdminProfile,
   loadMembers,
   loadPaymentRequests,
   loadSettings,
   observeAuth,
+  removeAdminAccess as removeRemoteAdminAccess,
   saveClickerSave,
   saveMember,
   saveMembers,
@@ -24,16 +31,12 @@ import {
   signInWithGoogle,
   signOutUser,
   updatePaymentRequest,
+  watchMyAdminInvites,
+  watchMyAdminProfile,
   watchPaymentRequests
 } from './firebase'
 
 addCollection(pixelarticons)
-
-const MASTER_EMAIL = 'kelvindaniel1932@gmail.com'
-const ADMIN_EMAILS = (import.meta.env.VITE_PASSCAFE_ADMIN_EMAILS || MASTER_EMAIL)
-  .split(',')
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean)
 
 const DEFAULT_SETTINGS = {
   month: 'AGOSTO / 2026',
@@ -153,6 +156,11 @@ const pixTypeOptions = [
   { value: 'Chave Aleatória', label: 'Chave Aleatória' }
 ]
 
+const adminRoleOptions = [
+  { value: 'MASTER', label: 'Mestre do Café' },
+  { value: 'APPRENTICE', label: 'Aprendiz do Café' }
+]
+
 const settings = reactive({ ...DEFAULT_SETTINGS })
 const members = ref([...DEFAULT_MEMBERS])
 const activeTab = ref('pay')
@@ -167,6 +175,14 @@ const userPayment = reactive({ dept: '' })
 const joinForm = reactive({ dept: '' })
 const adminForm = reactive({ ...DEFAULT_SETTINGS })
 const adminUser = ref(null)
+const managedAdmins = ref([])
+const pendingAdminInvites = ref([])
+const myAdminInvites = ref([])
+const adminInviteAnswering = ref(false)
+const adminManagementLoading = ref(false)
+const adminManagementError = ref('')
+const adminInviteForm = reactive({ email: '', role: 'MASTER' })
+const adminRemovalTarget = ref(null)
 const paymentRequests = ref([])
 const adminNewMember = reactive({ name: '', dept: '' })
 const searchMember = ref('')
@@ -204,6 +220,8 @@ const skillTree = reactive(SKILL_TREE_CATALOG.map((skill) => ({
 })))
 const toasts = ref([])
 let unwatchPaymentRequests = () => {}
+let unwatchMyAdminInvites = () => {}
+let unwatchMyAdminProfile = () => {}
 let paymentRequestsReady = false
 let funnyBannerTimer = null
 let clickerTimer = null
@@ -286,35 +304,26 @@ const filteredMembers = computed(() => {
 onMounted(async () => {
   observeAuth(async (user) => {
     unwatchPaymentRequests()
+    unwatchMyAdminInvites()
+    unwatchMyAdminProfile()
     paymentRequestsReady = false
     if (currentUser.value?.uid !== user?.uid) userPhotoFailed.value = false
     if (currentUser.value?.uid && currentUser.value.uid !== user?.uid) await saveClickerProgress()
     currentUser.value = user
     await hydrateClickerUser(user)
     authReady.value = true
-    const email = user?.email?.toLowerCase() || ''
-    adminUser.value = ADMIN_EMAILS.includes(email)
-      ? {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          role: 'MASTER'
-        }
-      : null
-    paymentRequests.value = []
-    if (adminUser.value) {
-      unwatchPaymentRequests = watchPaymentRequests((requests) => {
-        const previousPending = pendingPaymentRequests.value.length
-        paymentRequests.value = requests
-        const nextPending = selectPendingPaymentRequests(requests).length
-        if (paymentRequestsReady && nextPending > previousPending) {
-          showToast('Notificação da brigada: tem Pix novo pedindo carimbo.', 'info')
-          playMailSound()
-        }
-        paymentRequestsReady = true
+    adminUser.value = await resolveAdminProfile(user)
+    if (user && adminUser.value) startMyAdminProfileWatcher(user)
+    myAdminInvites.value = []
+    if (user?.email && !adminUser.value) {
+      unwatchMyAdminInvites = watchMyAdminInvites(user.email, (invites) => {
+        myAdminInvites.value = invites
+        if (invites.length) playMailSound()
       })
     }
+    paymentRequests.value = []
+    if (adminUser.value) startAdminPaymentWatcher()
+    if (adminUser.value?.role === 'MASTER') await refreshAdminManagement(false)
   })
 
   try {
@@ -345,6 +354,8 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   unwatchPaymentRequests()
+  unwatchMyAdminInvites()
+  unwatchMyAdminProfile()
   window.clearInterval(funnyBannerTimer)
   window.clearInterval(clickerTimer)
   window.clearInterval(clickerSaveTimer)
@@ -353,7 +364,7 @@ onBeforeUnmount(() => {
 
 function requireAdmin() {
   if (adminUnlocked.value) return true
-  showToast('Entre com o Gmail do Mestre do Cafe para alterar o painel.', 'error')
+  showToast('Sua conta Google não possui um cargo administrativo ativo.', 'error')
   return false
 }
 
@@ -783,11 +794,17 @@ function approveMemberLevelPayment(member, existingMember = null) {
 }
 
 function currentActor() {
+  const protectedAdmin = Boolean(adminUser.value?.protected)
   return {
     uid: currentUser.value?.uid || null,
-    email: currentUser.value?.email || null,
-    name: currentUser.value?.displayName || currentUser.value?.email || null
+    email: protectedAdmin ? null : (currentUser.value?.email || null),
+    name: protectedAdmin ? 'Mestre Supremo' : (currentUser.value?.displayName || currentUser.value?.email || null)
   }
+}
+
+function adminReviewIdentity() {
+  if (adminUser.value?.protected) return 'Mestre Supremo'
+  return adminUser.value?.email || 'Brigada do Café'
 }
 
 function withMemberAudit(member, existingMember = null) {
@@ -796,7 +813,7 @@ function withMemberAudit(member, existingMember = null) {
   return {
     ...member,
     createdByUid: existingMember?.createdByUid || member.createdByUid || actor.uid,
-    createdByEmail: existingMember?.createdByEmail || member.createdByEmail || actor.email,
+    createdByEmail: adminUser.value?.protected ? null : (existingMember?.createdByEmail || member.createdByEmail || actor.email),
     createdAt: existingMember?.createdAt || member.createdAt || now,
     updatedByUid: actor.uid,
     updatedByEmail: actor.email,
@@ -1028,7 +1045,7 @@ async function closePendingPaymentRequestsForMember(member) {
   if (!pendingRequests.length) return
 
   const reviewedAt = new Date().toISOString()
-  const reviewedBy = adminUser.value?.email || 'Brigada do Café'
+  const reviewedBy = adminReviewIdentity()
   await Promise.all(pendingRequests.map((request) => updatePaymentRequest(request.id, {
     ...request,
     status: 'REJECTED',
@@ -1077,6 +1094,72 @@ function authErrorMessage(error) {
   return 'Não foi possível entrar com o Google. Tente novamente.'
 }
 
+function adminFunctionError(error) {
+  const message = String(error?.message || '')
+    .replace(/^FirebaseError:\s*/i, '')
+    .replace(/^internal\s*/i, '')
+    .trim()
+  return message || 'Não foi possível concluir a operação administrativa.'
+}
+
+async function resolveAdminProfile(user) {
+  if (!user) return null
+  adminManagementError.value = ''
+  try {
+    const profile = await loadMyAdminProfile(user)
+    if (!profile) return null
+    return {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      role: profile.role,
+      protected: Boolean(profile.protected)
+    }
+  } catch (error) {
+    console.error('[PassCafe Admin]', error)
+    adminManagementError.value = adminFunctionError(error)
+    return null
+  }
+}
+
+function startAdminPaymentWatcher() {
+  unwatchPaymentRequests()
+  paymentRequestsReady = false
+  unwatchPaymentRequests = watchPaymentRequests((requests) => {
+    const previousPending = pendingPaymentRequests.value.length
+    paymentRequests.value = requests
+    const nextPending = selectPendingPaymentRequests(requests).length
+    if (paymentRequestsReady && nextPending > previousPending) {
+      showToast('Notificação da brigada: tem Pix novo pedindo carimbo.', 'info')
+      playMailSound()
+    }
+    paymentRequestsReady = true
+  })
+}
+
+function startMyAdminProfileWatcher(user) {
+  unwatchMyAdminProfile()
+  unwatchMyAdminProfile = watchMyAdminProfile(user.uid, (profile) => {
+    if (!profile) {
+      adminUser.value = null
+      paymentRequests.value = []
+      unwatchPaymentRequests()
+      if (activeTab.value === 'admin') activeTab.value = 'pay'
+      showToast('Seu acesso administrativo foi removido.', 'info')
+      return
+    }
+    if (!adminUser.value) return
+    const previousRole = adminUser.value.role
+    adminUser.value = {
+      ...adminUser.value,
+      role: profile.role,
+      protected: Boolean(profile.protected)
+    }
+    if (profile.role === 'MASTER' && previousRole !== 'MASTER') refreshAdminManagement(false)
+  })
+}
+
 async function signInToApp() {
   if (!hasFirebaseConfig) {
     showToast('Acesso remoto ainda não configurado. Login Google indisponível.', 'error')
@@ -1091,19 +1174,12 @@ async function signInToApp() {
     userPhotoFailed.value = false
     currentUser.value = credential.user
     await hydrateClickerUser(credential.user)
-    const email = credential.user.email?.toLowerCase() || ''
-    if (ADMIN_EMAILS.includes(email)) {
-      adminUser.value = {
-        uid: credential.user.uid,
-        email: credential.user.email,
-        displayName: credential.user.displayName,
-        photoURL: credential.user.photoURL,
-        role: 'MASTER'
-      }
-      showToast('Entrada liberada com Google. Perfil de Mestre reconhecido.', 'success')
+    adminUser.value = await resolveAdminProfile(credential.user)
+    if (adminUser.value) {
+      showToast(`Entrada liberada. Cargo reconhecido: ${roleLabel(adminUser.value.role)}.`, 'success')
       playAdminUnlockSound()
+      if (adminUser.value.role === 'MASTER') await refreshAdminManagement(false)
     } else {
-      adminUser.value = null
       showToast('Entrada liberada com Google.', 'success')
       playPowerUpSound()
     }
@@ -1126,14 +1202,141 @@ async function lockAdmin() {
   currentUser.value = null
   await hydrateClickerUser(null)
   adminUser.value = null
+  managedAdmins.value = []
+  pendingAdminInvites.value = []
+  myAdminInvites.value = []
+  adminRemovalTarget.value = null
   paymentRequests.value = []
   unwatchPaymentRequests()
+  unwatchMyAdminInvites()
   showToast('Sessão encerrada.', 'info')
   playLockSound()
 }
 
 function roleLabel(role) {
   return role === 'MASTER' ? 'Mestre do Café' : 'Aprendiz do Café'
+}
+
+async function refreshAdminManagement(announce = true) {
+  if (adminUser.value?.role !== 'MASTER' || adminManagementLoading.value) return
+  adminManagementLoading.value = true
+  adminManagementError.value = ''
+  try {
+    const result = await loadRemoteAdminManagement()
+    managedAdmins.value = (result?.admins || []).map((admin) => ({
+      ...admin,
+      isSelf: admin.uid === adminUser.value?.uid
+    }))
+    pendingAdminInvites.value = result?.invites || []
+    if (announce) showToast('Cargos administrativos atualizados.', 'info')
+  } catch (error) {
+    adminManagementError.value = adminFunctionError(error)
+    if (announce) showToast(adminManagementError.value, 'error')
+  } finally {
+    adminManagementLoading.value = false
+  }
+}
+
+async function submitAdminInvite() {
+  if (!isCoffeeMaster.value || adminManagementLoading.value) return
+  const email = adminInviteForm.email.trim().toLowerCase()
+  if (!email) return
+  adminManagementLoading.value = true
+  adminManagementError.value = ''
+  try {
+    await createAdminInvite(email, adminInviteForm.role, adminUser.value.uid)
+    adminInviteForm.email = ''
+    showToast(`Convite registrado para ${email}. O acesso será ativado no primeiro login Google.`, 'success')
+    adminManagementLoading.value = false
+    await refreshAdminManagement(false)
+  } catch (error) {
+    adminManagementError.value = adminFunctionError(error)
+    showToast(adminManagementError.value, 'error')
+  } finally {
+    adminManagementLoading.value = false
+  }
+}
+
+async function updateManagedAdminRole(admin, role) {
+  if (!isCoffeeMaster.value || admin.isSelf || role === admin.role) return
+  adminManagementLoading.value = true
+  adminManagementError.value = ''
+  try {
+    await changeRemoteAdminRole(admin.uid, role, adminUser.value.uid)
+    admin.role = role
+    showToast(`Cargo de ${admin.email} alterado para ${roleLabel(role)}.`, 'success')
+  } catch (error) {
+    adminManagementError.value = adminFunctionError(error)
+    showToast(adminManagementError.value, 'error')
+  } finally {
+    adminManagementLoading.value = false
+  }
+}
+
+function requestManagedAccessRemoval(type, entry) {
+  if (!isCoffeeMaster.value || entry.isSelf || adminManagementLoading.value) return
+  adminRemovalTarget.value = { type, entry }
+}
+
+function closeAdminRemovalModal() {
+  if (!adminManagementLoading.value) adminRemovalTarget.value = null
+}
+
+async function confirmManagedAccessRemoval() {
+  const target = adminRemovalTarget.value
+  if (!target || adminManagementLoading.value) return
+  const { type, entry } = target
+  adminManagementLoading.value = true
+  adminManagementError.value = ''
+  try {
+    await removeRemoteAdminAccess(type, type === 'invite' ? entry.id : entry.uid)
+    showToast(type === 'invite' ? 'Convite cancelado.' : 'Acesso administrativo removido.', 'success')
+    adminRemovalTarget.value = null
+    adminManagementLoading.value = false
+    await refreshAdminManagement(false)
+  } catch (error) {
+    adminManagementError.value = adminFunctionError(error)
+    showToast(adminManagementError.value, 'error')
+  } finally {
+    adminManagementLoading.value = false
+  }
+}
+
+async function answerMyAdminInvite(invite, accepted) {
+  if (!currentUser.value || adminInviteAnswering.value) return
+  adminInviteAnswering.value = true
+  adminManagementError.value = ''
+  try {
+    if (accepted) {
+      const profile = await acceptAdminInvite(invite, currentUser.value)
+      adminUser.value = {
+        uid: currentUser.value.uid,
+        email: currentUser.value.email,
+        displayName: currentUser.value.displayName,
+        photoURL: currentUser.value.photoURL,
+        role: profile.role,
+        protected: false
+      }
+      myAdminInvites.value = myAdminInvites.value.filter((item) => item.id !== invite.id)
+      unwatchMyAdminInvites()
+      startMyAdminProfileWatcher(currentUser.value)
+      startAdminPaymentWatcher()
+      if (profile.role === 'MASTER') await refreshAdminManagement(false)
+      showToast(`Convite aceito! Você agora é ${roleLabel(profile.role)}.`, 'success')
+      playAdminUnlockSound()
+    } else {
+      await declineAdminInvite(invite.id, currentUser.value.uid)
+      myAdminInvites.value = myAdminInvites.value.filter((item) => item.id !== invite.id)
+      showToast('Convite administrativo recusado.', 'info')
+      playLockSound()
+    }
+  } catch (error) {
+    adminManagementError.value = adminFunctionError(error)
+    showToast(adminManagementError.value, 'error')
+    playErrorSound()
+  } finally {
+    adminInviteAnswering.value = false
+  }
 }
 
 function memberStatusLabel(status) {
@@ -1209,11 +1412,11 @@ async function approvePaymentRequest(request) {
     ...request,
     status: 'APPROVED',
     reviewedAt: new Date().toISOString(),
-    reviewedBy: adminUser.value?.email || 'Brigada do Café'
+    reviewedBy: adminReviewIdentity()
   })
   paymentRequests.value = paymentRequests.value.map((item) => (
     item.id === request.id
-      ? { ...item, status: 'APPROVED', reviewedAt: new Date().toISOString(), reviewedBy: adminUser.value?.email }
+      ? { ...item, status: 'APPROVED', reviewedAt: new Date().toISOString(), reviewedBy: adminReviewIdentity() }
       : item
   ))
   await auditAction('PAYMENT_REQUEST_APPROVED', {
@@ -1238,11 +1441,11 @@ async function rejectPaymentRequest(request) {
     ...request,
     status: 'REJECTED',
     reviewedAt: new Date().toISOString(),
-    reviewedBy: adminUser.value?.email || 'Brigada do Café'
+    reviewedBy: adminReviewIdentity()
   })
   paymentRequests.value = paymentRequests.value.map((item) => (
     item.id === request.id
-      ? { ...item, status: 'REJECTED', reviewedAt: new Date().toISOString(), reviewedBy: adminUser.value?.email }
+      ? { ...item, status: 'REJECTED', reviewedAt: new Date().toISOString(), reviewedBy: adminReviewIdentity() }
       : item
   ))
   await auditAction('PAYMENT_REQUEST_REJECTED', {
@@ -1538,7 +1741,7 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
               <Icon icon="pixelarticons:coffee" />
             </div>
             <div>
-              <h1>CAFÉ PASS <span>v2.0</span></h1>
+              <h1>CAFÉ PASS <span>v1.2</span></h1>
               <p>"A lei do cafezinho da firma é clara: pagou, tomou!"</p>
             </div>
           </div>
@@ -1613,6 +1816,25 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
 
     <div v-if="authReady && isSignedIn" class="bg-caramel comic-border-lg border-t-0 border-x-0 py-1.5 px-4 text-center font-bold text-xs sm:text-sm text-espresso overflow-hidden shadow-sm">
       <span class="inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:warning-box" class="text-lg" /> {{ funnyBanner }}</span>
+    </div>
+
+    <div v-if="myAdminInvites.length" class="fixed inset-0 z-50 bg-espresso/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-crema p-6 sm:p-8 rounded-3xl comic-border-lg shadow-comic-xl max-w-lg w-full text-center space-y-5">
+        <div class="w-20 h-20 mx-auto bg-caramel text-espresso rounded-2xl comic-border shadow-comic grid place-items-center text-4xl">
+          <Icon icon="pixelarticons:mail-check" />
+        </div>
+        <div>
+          <span class="text-[10px] font-black text-caramel uppercase font-mono">Convite da Brigada</span>
+          <h2 class="text-2xl font-black text-espresso mt-1">Você foi convidado!</h2>
+          <p class="text-sm text-mocha font-medium mt-2">Um Mestre do Café convidou sua conta Google para assumir o cargo de <strong class="text-espresso">{{ roleLabel(myAdminInvites[0].role) }}</strong>.</p>
+        </div>
+        <div class="bg-foam p-3 rounded-xl comic-border text-xs text-mocha font-mono break-all">{{ currentUser.email }}</div>
+        <div class="grid grid-cols-2 gap-3">
+          <CafeButton variant="chili" size="md" block icon="pixelarticons:close" :disabled="adminInviteAnswering" @click="answerMyAdminInvite(myAdminInvites[0], false)">RECUSAR</CafeButton>
+          <CafeButton variant="mint" size="md" block icon="pixelarticons:check" :disabled="adminInviteAnswering" @click="answerMyAdminInvite(myAdminInvites[0], true)">{{ adminInviteAnswering ? 'PROCESSANDO' : 'ACEITAR' }}</CafeButton>
+        </div>
+        <p class="text-[10px] text-mocha/70">O acesso só será ativado se você aceitar. Nenhuma senha é compartilhada.</p>
+      </div>
     </div>
 
     <main
@@ -1900,10 +2122,11 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
           <CafeButton type="button" variant="foam" size="md" block icon="pixelarticons:user" :disabled="authLoading" @click="unlockAdmin">
             {{ authLoading ? 'Conectando...' : 'Entrar com Google' }}
           </CafeButton>
-          <p v-if="signedInWithWrongAccount" class="text-[11px] text-chili font-bold">Conta conectada sem permissão: {{ currentUser.email }}</p>
+          <p v-if="adminManagementError" class="text-[11px] text-chili font-bold">Falha ao verificar o cargo: {{ adminManagementError }}</p>
+          <p v-else-if="signedInWithWrongAccount" class="text-[11px] text-chili font-bold">Conta conectada sem permissão: {{ currentUser.email }}</p>
           <p v-else-if="authError" class="text-[11px] text-chili font-bold">{{ authError }}</p>
           <p v-else-if="!hasFirebaseConfig" class="text-[11px] text-chili font-bold">Configure o acesso remoto do app para liberar o login.</p>
-          <p v-else class="text-[10px] text-mocha/70 italic">Mestre inicial: <code class="font-bold">{{ MASTER_EMAIL }}</code></p>
+          <p v-else class="text-[10px] text-mocha/70 italic">O acesso é liberado automaticamente para contas Google previamente convidadas.</p>
         </div>
 
         <div v-else class="space-y-6">
@@ -2012,25 +2235,120 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
             </div>
           </div>
 
-          <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
-            <div class="mb-5">
-              <h3 class="text-lg font-black text-espresso flex items-center gap-2"><Icon icon="pixelarticons:users" class="text-caramel text-2xl" /> Mestres Autorizados</h3>
-              <p class="text-xs text-mocha font-medium">O acesso administrativo usa login Google e os e-mails configurados em <code class="font-bold">VITE_PASSCAFE_ADMIN_EMAILS</code>.</p>
+          <div v-if="isCoffeeMaster" class="bg-crema p-4 sm:p-6 rounded-3xl comic-border-lg shadow-comic-xl space-y-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-espresso/20 pb-3">
+              <div>
+                <h3 class="text-lg font-black text-espresso flex items-center gap-2"><Icon icon="pixelarticons:users" class="text-caramel text-2xl" /> Brigada Administrativa</h3>
+                <p class="text-xs text-mocha font-medium">Convide uma conta Google, defina o cargo e revogue o acesso quando necessário.</p>
+              </div>
+              <CafeButton variant="foam" size="sm" icon="pixelarticons:reload" :disabled="adminManagementLoading" @click="refreshAdminManagement()">
+                {{ adminManagementLoading ? 'CARREGANDO' : 'ATUALIZAR' }}
+              </CafeButton>
             </div>
 
-            <div class="bg-foam rounded-2xl comic-border overflow-hidden">
-              <div v-for="email in ADMIN_EMAILS" :key="email" class="p-4 border-b-2 border-espresso/10 last:border-b-0 flex items-center justify-between gap-3">
-                <div>
-                  <p class="font-mono font-black text-sm text-espresso">{{ email }}</p>
-                  <p class="text-[11px] font-bold text-caramel">{{ roleLabel('MASTER') }}</p>
+            <form class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px_auto] gap-3 items-end bg-foam p-4 rounded-2xl comic-border" @submit.prevent="submitAdminInvite">
+              <div>
+                <label class="block text-xs font-bold text-espresso uppercase mb-1">E-mail da conta Google</label>
+                <input v-model="adminInviteForm.email" type="email" autocomplete="off" placeholder="colega@gmail.com" required class="w-full bg-crema text-espresso font-bold p-2.5 rounded-xl comic-border text-sm font-mono">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-espresso uppercase mb-1">Cargo</label>
+                <CafeSelect v-model="adminInviteForm.role" :options="adminRoleOptions" />
+              </div>
+              <CafeButton type="submit" variant="mint" size="md" icon="pixelarticons:user-plus" :disabled="adminManagementLoading">CONVIDAR</CafeButton>
+            </form>
+
+            <p class="text-[11px] text-mocha font-medium">O convite fica pendente até o colega entrar no Café Pass com exatamente essa conta Google. Nenhuma senha é criada ou compartilhada.</p>
+            <p v-if="adminManagementError" class="text-xs text-chili font-bold">{{ adminManagementError }}</p>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <div class="bg-foam rounded-2xl comic-border overflow-visible">
+                <div class="px-4 py-3 bg-roast text-foam rounded-t-xl flex items-center justify-between gap-2">
+                  <strong class="text-xs uppercase">Acessos ativos</strong>
+                  <span class="text-[10px] font-mono text-caramel">{{ managedAdmins.length }}</span>
                 </div>
-                <Icon icon="pixelarticons:crown" class="text-2xl text-caramel" />
+                <div v-if="managedAdmins.length === 0" class="p-4 text-xs font-bold text-mocha">Nenhum outro administrador gerenciável.</div>
+                <div v-for="admin in managedAdmins" :key="admin.uid" class="p-4 border-b-2 border-espresso/10 last:border-b-0 space-y-3">
+                  <div class="min-w-0">
+                    <p class="font-mono font-black text-sm text-espresso truncate">{{ admin.email }}</p>
+                    <p class="text-[10px] font-bold text-caramel">{{ admin.isSelf ? 'VOCÊ' : roleLabel(admin.role) }}</p>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2 items-center">
+                    <CafeSelect :model-value="admin.role" :options="adminRoleOptions" @update:model-value="updateManagedAdminRole(admin, $event)" />
+                    <CafeButton variant="chili" size="sm" icon="pixelarticons:trash" :disabled="admin.isSelf || adminManagementLoading" @click="requestManagedAccessRemoval('admin', admin)">REMOVER</CafeButton>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-foam rounded-2xl comic-border overflow-visible">
+                <div class="px-4 py-3 bg-roast text-foam rounded-t-xl flex items-center justify-between gap-2">
+                  <strong class="text-xs uppercase">Convites pendentes</strong>
+                  <span class="text-[10px] font-mono text-caramel">{{ pendingAdminInvites.length }}</span>
+                </div>
+                <div v-if="pendingAdminInvites.length === 0" class="p-4 text-xs font-bold text-mocha">Nenhum convite aguardando login.</div>
+                <div v-for="invite in pendingAdminInvites" :key="invite.id" class="p-4 border-b-2 border-espresso/10 last:border-b-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="font-mono font-black text-sm text-espresso truncate">{{ invite.email }}</p>
+                    <p class="text-[10px] font-bold text-caramel">{{ roleLabel(invite.role) }} · AGUARDANDO LOGIN</p>
+                  </div>
+                  <CafeButton variant="chili" size="sm" icon="pixelarticons:close" :disabled="adminManagementLoading" @click="requestManagedAccessRemoval('invite', invite)">CANCELAR</CafeButton>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
     </main>
+
+    <div
+      v-if="adminRemovalTarget"
+      class="fixed inset-0 bg-espresso/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-removal-title"
+      @click.self="closeAdminRemovalModal"
+    >
+      <div class="bg-crema p-6 sm:p-8 rounded-3xl comic-border-lg shadow-comic-xl max-w-md w-full space-y-5 relative text-center">
+        <button
+          type="button"
+          class="absolute top-4 right-4 bg-foam text-espresso rounded-xl w-8 h-8 comic-border flex items-center justify-center font-bold disabled:opacity-50"
+          aria-label="Fechar confirmação"
+          :disabled="adminManagementLoading"
+          @click="closeAdminRemovalModal"
+        >
+          <Icon icon="pixelarticons:close" />
+        </button>
+
+        <div class="w-20 h-20 mx-auto bg-chili text-foam rounded-2xl comic-border shadow-comic grid place-items-center text-4xl">
+          <Icon :icon="adminRemovalTarget.type === 'invite' ? 'pixelarticons:mail-delete' : 'pixelarticons:user-minus'" />
+        </div>
+
+        <div>
+          <span class="text-[10px] font-black text-chili uppercase font-mono">Ação administrativa</span>
+          <h2 id="admin-removal-title" class="text-2xl font-black text-espresso mt-1">
+            {{ adminRemovalTarget.type === 'invite' ? 'Cancelar convite?' : 'Remover Mestre do Café?' }}
+          </h2>
+          <p class="text-sm text-mocha font-medium mt-2">
+            {{ adminRemovalTarget.type === 'invite'
+              ? 'Este convite deixará de aparecer para a conta Google informada.'
+              : 'Esta conta perderá imediatamente o acesso ao Painel do Café.' }}
+          </p>
+        </div>
+
+        <div class="bg-foam p-3 rounded-xl comic-border text-xs text-espresso font-mono font-black break-all">
+          {{ adminRemovalTarget.entry.email }}
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <CafeButton variant="foam" size="md" icon="pixelarticons:close" :disabled="adminManagementLoading" @click="closeAdminRemovalModal">
+            VOLTAR
+          </CafeButton>
+          <CafeButton variant="chili" size="md" icon="pixelarticons:trash" :disabled="adminManagementLoading" @click="confirmManagedAccessRemoval">
+            {{ adminManagementLoading ? 'REMOVENDO...' : (adminRemovalTarget.type === 'invite' ? 'CANCELAR CONVITE' : 'REMOVER ACESSO') }}
+          </CafeButton>
+        </div>
+      </div>
+    </div>
 
     <div v-if="joinModalOpen" class="fixed inset-0 bg-espresso/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div class="bg-crema p-6 sm:p-8 rounded-3xl comic-border-lg shadow-comic-xl max-w-md w-full space-y-4 relative">

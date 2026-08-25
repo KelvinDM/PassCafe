@@ -1,11 +1,6 @@
 # Backend Firebase - Cafe Pass
 
-O Cafe Pass usa Firebase direto no frontend:
-
-- Cloud Firestore para os dados da vaquinha.
-- Firebase Authentication para o login do painel admin.
-
-Nao existe senha de admin no codigo. O acesso ao painel e feito por e-mail e senha cadastrados no Firebase.
+O Cafe Pass usa Cloud Firestore e login Google. O sistema de convites funciona integralmente pelas regras do Firestore e permanece no plano gratuito.
 
 ## Cargos
 
@@ -14,40 +9,19 @@ Existem dois cargos na brigada do cafe:
 - `MASTER`: Mestre do Cafe. Acessa tudo, altera Pix/valor/mes e cadastra novos usuarios.
 - `APPRENTICE`: Aprendiz do Cafe. Ajuda na rotina da lista e pagamentos, mas nao cadastra usuarios nem altera parametros principais.
 
-## Habilitar login admin
+## Habilitar login Google
 
 No Firebase Console:
 
 1. Va em **Authentication**.
 2. Clique em **Get started** se ainda nao estiver habilitado.
 3. Entre em **Sign-in method**.
-4. Habilite **Email/Password**.
-5. Va em **Users**.
-6. Clique em **Add user**.
-7. Cadastre o e-mail do primeiro Mestre do Cafe e uma senha inicial.
+4. Habilite **Google**.
+5. Autorize o dominio em que o Cafe Pass sera publicado.
 
-## Criar o primeiro Mestre
+## Configurar o Mestre Supremo
 
-O primeiro Mestre precisa ser criado uma vez pelo Firebase Console:
-
-1. Crie o usuario em **Authentication > Users**.
-2. Copie o `uid` desse usuario.
-3. Va em **Firestore Database**.
-4. Crie a colecao `admins`.
-5. Crie um documento com ID igual ao `uid`.
-6. Adicione os campos:
-
-```js
-{
-  uid: 'UID_DO_USUARIO',
-  email: 'email@exemplo.com',
-  role: 'MASTER',
-  createdBy: 'bootstrap',
-  createdAt: '2026-08-15T00:00:00.000Z'
-}
-```
-
-Depois disso, o Mestre entra pelo painel usando esse e-mail e senha.
+A conta protegida e reconhecida pelo UID do Firebase Authentication. O e-mail nao fica em variavel `VITE_*`, na lista administrativa ou no bundle. No primeiro login, o proprio app cria ou protege `admins/{uid}` conforme as regras publicadas.
 
 ## Adicionar usuarios pela aplicacao
 
@@ -55,23 +29,11 @@ Com um Mestre autenticado no painel:
 
 1. Abra **Painel Admin**.
 2. Va ate **Brigada do Cafe**.
-3. Informe e-mail e senha inicial.
+3. Informe o e-mail da conta Google.
 4. Escolha `Aprendiz do Cafe` ou `Mestre do Cafe`.
-5. Clique em **Cadastrar na Brigada**.
+5. Clique em **Convidar**.
 
-O app cria o usuario no Firebase Authentication e registra o cargo em `admins/{uid}`.
-
-## Recuperacao de senha
-
-O botao **Esqueci a senha, mandar link por e-mail** usa o Firebase Authentication para enviar um link de redefinicao para o e-mail digitado.
-
-Se o dev esquecer a senha:
-
-1. Abra o app.
-2. Va em **Painel Admin**.
-3. Digite o e-mail cadastrado.
-4. Clique em **Esqueci a senha, mandar link por e-mail**.
-5. Abra o e-mail e crie uma nova senha.
+O colega recebe o convite dentro do app e precisa aceitar antes de ganhar acesso. Consulte `docs/admin-invites.md` para o fluxo completo.
 
 ## Firestore
 
@@ -81,6 +43,8 @@ Colecoes usadas:
 passcafe/settings
 passcafeMembers/{memberId}
 admins/{uid}
+adminInvites/{inviteId}
+adminDirectory/{uid}
 ```
 
 ### `passcafe/settings`
@@ -122,9 +86,10 @@ firestore.rules
 Resumo:
 
 - leitura publica para os dados da vaquinha;
-- leitura da lista `admins` apenas para Mestre/Aprendiz autenticado;
+- leitura de `admins/{uid}` apenas pelo proprio usuario; listagem direta bloqueada;
+- leitura e escrita direta de `adminInvites` bloqueadas;
 - escrita de `passcafe/settings` somente para Mestre;
-- criacao de novos documentos `admins/{uid}` somente para Mestre;
+- convites, cargos, aceitacao e revogacoes validados pelas regras do Firestore;
 - criacao/atualizacao de integrantes liberada para manter o fluxo publico de pagamento/entrada;
 - exclusao de integrantes somente para Mestre ou para o proprio usuario que criou a entrada, desde que ainda nao esteja quitada no mes;
 - qualquer outro caminho fica bloqueado.
