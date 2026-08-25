@@ -1730,7 +1730,7 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
       <div class="scene-flash" :key="sceneVariant" aria-hidden="true"></div>
     </main>
 
-    <header v-if="authReady && isSignedIn" class="bg-mocha text-crema comic-border-lg border-b-8 border-espresso shadow-comic-lg sticky top-0 z-40">
+    <header v-if="authReady && isSignedIn" class="app-header bg-mocha text-crema comic-border-lg border-b-8 border-espresso shadow-comic-lg sticky top-0 z-40">
       <div class="app-header-shell">
         <div class="app-header-main">
           <div class="app-header-brand" @click="switchTab('pay')">
@@ -1807,14 +1807,14 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
             ['pay', 'pixelarticons:wallet', 'Pagar Cota'],
             ['list', 'pixelarticons:users', 'Lista dos Cafeinados'],
             ['receipts', 'pixelarticons:receipt', 'Segundas Vias']
-          ]" :key="tab[0]" @click="switchTab(tab[0])" class="nav-btn font-bold px-4 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-2 text-sm whitespace-nowrap" :class="activeTab === tab[0] ? 'bg-caramel text-espresso' : tab[0] === 'admin' ? 'bg-roast text-latte' : 'bg-crema text-espresso'">
-            <span class="nav-icon"><Icon :icon="tab[1]" /></span> {{ tab[2] }}
+          ]" :key="tab[0]" @click="switchTab(tab[0])" class="nav-btn font-bold px-4 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-2 text-sm whitespace-nowrap" :class="activeTab === tab[0] ? 'bg-caramel text-espresso' : tab[0] === 'admin' ? 'bg-roast text-latte' : 'bg-crema text-espresso'" :aria-label="tab[2]" :title="tab[2]">
+            <span class="nav-icon"><Icon :icon="tab[1]" /></span><span class="nav-label">{{ tab[2] }}</span>
           </button>
         </nav>
       </div>
     </header>
 
-    <div v-if="authReady && isSignedIn" class="bg-caramel comic-border-lg border-t-0 border-x-0 py-1.5 px-4 text-center font-bold text-xs sm:text-sm text-espresso overflow-hidden shadow-sm">
+    <div v-if="authReady && isSignedIn" class="app-banner bg-caramel comic-border-lg border-t-0 border-x-0 py-1.5 px-4 text-center font-bold text-xs sm:text-sm text-espresso overflow-hidden shadow-sm">
       <span class="inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:warning-box" class="text-lg" /> {{ funnyBanner }}</span>
     </div>
 
@@ -1839,7 +1839,7 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
 
     <main
       v-if="authReady && isSignedIn"
-      class="flex-1 w-full"
+      class="app-main flex-1 w-full"
       :class="activeTab === 'game' ? 'game-main' : 'mx-auto max-w-5xl px-4 py-6'"
     >
       <div v-if="loading" class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl text-center font-black">Carregando café...</div>
@@ -1917,12 +1917,12 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
       </section>
 
       <section v-show="!loading && activeTab === 'pay'" class="tab-content space-y-6">
-        <div class="bg-crema rounded-3xl p-6 sm:p-8 comic-border-lg shadow-comic-xl grid grid-cols-1 md:grid-cols-12 gap-8 items-start relative overflow-hidden">
+        <div class="pay-card bg-crema rounded-3xl p-6 sm:p-8 comic-border-lg shadow-comic-xl grid grid-cols-1 md:grid-cols-12 gap-8 items-start relative overflow-hidden">
           <div class="absolute -right-10 -bottom-10 text-mocha/10 text-9xl pointer-events-none select-none">
             <Icon icon="pixelarticons:coffee-alt" />
           </div>
 
-          <div class="md:col-span-5 bg-foam p-5 rounded-2xl comic-border shadow-comic text-center flex flex-col items-center">
+          <div class="pix-card md:col-span-5 bg-foam p-5 rounded-2xl comic-border shadow-comic text-center flex flex-col items-center">
             <div class="inline-block bg-caramel/20 text-caramel text-xs font-black px-3 py-1 rounded-full comic-border mb-3 font-mono">
               MÊS ATUAL: <span>{{ settings.month }}</span>
             </div>
@@ -1936,13 +1936,13 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
                 <p class="text-foam text-xs font-bold">Faça a transferência no app do seu banco e informe seu nome ao lado!</p>
               </div>
             </div>
-            <div class="mt-4 bg-roast text-foam px-4 py-2 rounded-xl comic-border w-full flex items-center justify-between">
+            <div class="monthly-fee mt-4 bg-roast text-foam px-4 py-2 rounded-xl comic-border w-full flex items-center justify-between">
               <span class="text-xs font-bold text-latte">Cota Mensal:</span>
               <span class="text-2xl font-black text-caramel font-mono">{{ formatMoney(settings.monthlyFee) }}</span>
             </div>
             <div class="mt-3 w-full">
               <p class="text-xs font-bold text-mocha text-left mb-1">Chave cadastrada (<span>{{ settings.pixType }}</span>):</p>
-              <div class="flex items-center gap-1">
+              <div class="pix-key-row flex items-center gap-1">
                 <input type="text" readonly :value="settings.pixKey" class="w-full bg-latte/50 text-espresso text-xs font-mono font-bold p-2.5 rounded-lg comic-border focus:outline-none select-all">
                 <button @click="copyPixKey" title="Copiar Chave Pix" class="bg-caramel hover:bg-amber-600 text-espresso p-2.5 rounded-lg comic-border shadow-comic hover:shadow-comic-hover active:translate-x-0.5 active:translate-y-0.5 transition-all">
                   <Icon icon="pixelarticons:copy" class="text-lg" />
@@ -1952,7 +1952,7 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
             </div>
           </div>
 
-          <div class="md:col-span-7 flex flex-col justify-between h-full">
+          <div class="payment-panel md:col-span-7 flex flex-col justify-between h-full">
             <div>
               <div class="flex items-center gap-2 mb-2">
                 <span class="bg-chili text-foam text-xs px-2 py-0.5 rounded-md comic-border font-bold uppercase tracking-wider">Sem Fila & Sem Senha</span>
@@ -1997,7 +1997,7 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="pay-rules grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="bg-foam p-4 rounded-2xl comic-border shadow-comic flex items-start gap-3">
             <FeatureIcon icon="pixelarticons:coffee-alt" tone="coffee" />
             <div><h4 class="font-bold text-sm text-espresso">Regra nº 1</h4><p class="text-xs text-mocha font-medium">Fez o último gole? Coloque mais água e pó ou corra para se esconder.</p></div>
@@ -2014,13 +2014,13 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
       </section>
 
       <section v-show="!loading && activeTab === 'list'" class="tab-content space-y-6">
-        <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div class="member-list-card bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
+          <div class="member-toolbar flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
               <h2 class="text-2xl font-black text-espresso flex items-center gap-2"><Icon icon="pixelarticons:checklist" class="text-caramel text-3xl" /> Lista Oficial dos Cafeinados</h2>
               <p class="text-xs text-mocha font-medium">Mês de <span class="font-bold">{{ settings.month }}</span> • Todo mês a lista se renova!</p>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="member-filters flex flex-wrap items-center gap-2">
               <div class="relative flex-1 sm:w-64">
                 <input v-model="searchMember" type="text" placeholder="Buscar colega..." class="w-full bg-foam text-xs font-bold pl-8 pr-3 py-2 rounded-xl comic-border focus:outline-none">
                 <Icon icon="pixelarticons:search" class="absolute left-2.5 top-2.5 text-sm text-mocha/50" />
@@ -2079,26 +2079,26 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
       </section>
 
       <section v-show="!loading && activeTab === 'receipts'" class="tab-content space-y-6">
-        <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
+        <div class="receipts-card bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
           <div class="mb-6">
             <h2 class="text-2xl font-black text-espresso flex items-center gap-2"><Icon icon="pixelarticons:card-id" class="text-caramel text-3xl" /> Emissor & Consultor de Licença de Cafeína</h2>
             <p class="text-xs text-mocha font-medium">Esfregue na cara de quem duvidar que você contribuiu para o café do mês!</p>
           </div>
-          <div class="bg-foam p-5 rounded-2xl comic-border shadow-comic mb-6 max-w-xl">
+          <div class="receipt-search-card bg-foam p-5 rounded-2xl comic-border shadow-comic mb-6 max-w-xl">
             <label class="block text-xs font-bold text-espresso uppercase mb-2">Digite o Nome do Colega Quitado:</label>
-            <div class="flex gap-2">
+            <div class="receipt-search-row flex gap-2">
               <input v-model="receiptSearch" type="text" placeholder="Ex: Carlinhos do T.I." class="w-full bg-crema text-espresso font-bold px-4 py-2.5 rounded-xl comic-border focus:outline-none">
               <CafeButton variant="caramel" size="md" icon="pixelarticons:search" @click="searchAndShowReceipt">Gerar Recibo</CafeButton>
             </div>
           </div>
           <div v-if="selectedReceipt">
             <div id="printable-receipt" class="bg-foam p-6 sm:p-8 rounded-3xl comic-border-lg shadow-comic-xl max-w-2xl mx-auto relative overflow-hidden text-espresso">
-              <div class="absolute top-6 right-6 font-mono font-black text-xl px-4 py-2 rounded-xl uppercase tracking-widest stamp-approved pointer-events-none select-none z-10 inline-flex items-center gap-2">QUITADO <Icon icon="pixelarticons:coffee" /></div>
-              <div class="border-b-4 border-espresso pb-4 mb-4 flex items-center gap-3">
+              <div class="receipt-stamp absolute top-6 right-6 font-mono font-black text-xl px-4 py-2 rounded-xl uppercase tracking-widest stamp-approved pointer-events-none select-none z-10 inline-flex items-center gap-2">QUITADO <Icon icon="pixelarticons:coffee" /></div>
+              <div class="receipt-header border-b-4 border-espresso pb-4 mb-4 flex items-center gap-3">
                 <div class="w-12 h-12 bg-caramel rounded-xl comic-border flex items-center justify-center text-espresso text-3xl"><Icon icon="pixelarticons:coffee" /></div>
                 <div><h3 class="text-xl font-black text-espresso tracking-tight">LICENÇA OFICIAL DE CONSUMO DE CAFÉ</h3><p class="text-[11px] font-mono font-bold text-mocha">REPUBLICA CAFEEIRA DA FIRMA S.A. • EDITAL MENSAL</p></div>
               </div>
-              <div class="space-y-4 font-mono text-xs sm:text-sm my-6">
+              <div class="receipt-details space-y-4 font-mono text-xs sm:text-sm my-6">
                 <div class="flex justify-between border-b border-espresso/20 pb-2"><span class="text-mocha font-bold">Nº DA LICENÇA:</span><span class="font-bold text-espresso">CAF-2026-{{ selectedReceipt.id.slice(-4) }}</span></div>
                 <div class="flex justify-between border-b border-espresso/20 pb-2"><span class="text-mocha font-bold">BENEFICIÁRIO(A):</span><span class="font-bold text-espresso text-sm uppercase">{{ selectedReceipt.name }}</span></div>
                 <div class="flex justify-between border-b border-espresso/20 pb-2"><span class="text-mocha font-bold">SETOR:</span><span class="font-bold text-espresso">{{ selectedReceipt.dept || 'GERAL' }}</span></div>
@@ -2107,8 +2107,8 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
                 <div class="flex justify-between border-b border-espresso/20 pb-2"><span class="text-mocha font-bold">DATA DE REGISTRO:</span><span class="font-bold text-espresso">{{ selectedReceipt.paidAt || '14/08/2026 12:00' }}</span></div>
               </div>
               <div class="bg-latte/50 p-3 rounded-xl comic-border text-[11px] font-sans font-medium text-mocha mb-6"><strong>PARECER TÉCNICO:</strong> O portador deste documento possui passe livre para até 4 xícaras diárias de café puro ou com leite. Proibido colocar açúcar no bule coletivo. Válido até o último dia do mês corrente.</div>
-              <div class="text-center pt-2 border-t-2 border-dashed border-espresso/30"><div class="font-mono text-2xl font-black tracking-widest text-espresso mb-1 select-none">||||| | |||| ||| |||||| | ||||| ||| |||</div><p class="text-[9px] font-mono text-mocha uppercase">AUTENTICAÇÃO MECÂNICA DA CAFETEIRA DA FIRMA</p></div>
-              <div class="mt-6 flex justify-end gap-2 print:hidden"><CafeButton variant="mint" size="md" icon="pixelarticons:printer" @click="printReceipt">Imprimir / Salvar PDF</CafeButton></div>
+              <div class="receipt-barcode text-center pt-2 border-t-2 border-dashed border-espresso/30"><div class="font-mono text-2xl font-black tracking-widest text-espresso mb-1 select-none">||||| | |||| ||| |||||| | ||||| ||| |||</div><p class="text-[9px] font-mono text-mocha uppercase">AUTENTICAÇÃO MECÂNICA DA CAFETEIRA DA FIRMA</p></div>
+              <div class="receipt-actions mt-6 flex justify-end gap-2 print:hidden"><CafeButton variant="mint" size="md" icon="pixelarticons:printer" @click="printReceipt">Imprimir / Salvar PDF</CafeButton></div>
             </div>
           </div>
         </div>

@@ -3324,6 +3324,342 @@ select.comic-border:hover {
   .upgrade-price { grid-column: auto; display: block; }
 }
 
+/* Mobile layout for the authenticated application. The public opening screen keeps
+   its existing clicker layout and is intentionally outside these selectors. */
+@media screen and (max-width: 640px) {
+  .app-header-shell {
+    padding: 0.65rem;
+  }
+
+  .app-header-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.4rem;
+    width: 100%;
+    padding-inline: 0;
+    overflow: visible;
+  }
+
+  .app-header-nav .nav-btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.35rem;
+    font-size: 0.7rem;
+  }
+
+  .app-header-nav .nav-label {
+    display: none;
+  }
+
+  .app-header-nav .nav-btn::after {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-header-nav .nav-btn:nth-child(1)::after { content: 'Pagar'; }
+  .app-header-nav .nav-btn:nth-child(2)::after { content: 'Lista'; }
+  .app-header-nav .nav-btn:nth-child(3)::after { content: 'Recibos'; }
+
+  .app-banner {
+    padding: 0.45rem 0.75rem;
+    line-height: 1.25;
+  }
+
+  .app-main:not(.game-main) {
+    padding: 1rem 0.75rem;
+  }
+
+  .tab-content {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .tab-content .comic-border-lg {
+    padding: 1rem;
+    border-radius: 1.25rem;
+  }
+
+  .pay-card {
+    gap: 1rem;
+  }
+
+  .pix-card,
+  .receipt-search-card {
+    padding: 1rem;
+  }
+
+  .pix-card .w-48.h-48 {
+    width: min(12rem, 100%);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .monthly-fee {
+    gap: 0.5rem;
+  }
+
+  .monthly-fee > :last-child {
+    font-size: clamp(1.15rem, 7vw, 1.5rem);
+    white-space: nowrap;
+  }
+
+  .pix-key-row,
+  .pix-key-row input,
+  .payment-panel,
+  .member-toolbar,
+  .member-filters,
+  .receipt-search-row {
+    min-width: 0;
+  }
+
+  .app-main input,
+  .fixed.inset-0 input {
+    font-size: 1rem !important;
+  }
+
+  .app-main .cafe-select {
+    min-width: 0;
+  }
+
+  .member-filters > * {
+    width: 100%;
+    flex: 1 0 100%;
+  }
+
+  .member-filters > .cafe-button {
+    min-height: 44px;
+  }
+
+  .member-list-shell {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .member-list-scroll {
+    overflow: visible;
+    background: transparent;
+  }
+
+  .member-list-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .member-list-table thead {
+    display: none;
+  }
+
+  .member-list-table tbody {
+    display: grid;
+    width: 100%;
+    max-height: none;
+    gap: 0.75rem;
+    overflow: visible;
+  }
+
+  .member-list-table tbody tr {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    border: 3px solid #1f120b;
+    border-radius: 0.85rem;
+    background: #fffdf9;
+    box-shadow: 3px 3px 0 #1f120b;
+  }
+
+  .member-list-table tbody td {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .member-list-table tbody td:first-child {
+    display: flex;
+    align-items: center;
+    padding: 0.15rem 0 0.65rem !important;
+    text-align: left;
+  }
+
+  .member-list-table tbody td:nth-child(n + 2) {
+    display: grid;
+    grid-template-columns: minmax(80px, 0.45fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0 !important;
+    border-top: 2px solid rgba(31, 18, 11, 0.1);
+    text-align: right !important;
+  }
+
+  .member-list-table tbody td:nth-child(n + 2)::before {
+    color: #603813;
+    font-family: 'Space Grotesk', monospace;
+    font-size: 0.62rem;
+    font-weight: 900;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .member-list-table tbody td:nth-child(2)::before { content: 'Setor'; }
+  .member-list-table tbody td:nth-child(3)::before { content: 'Status'; }
+  .member-list-table tbody td:nth-child(4)::before { content: 'Pagamento'; }
+  .member-list-table tbody td:nth-child(5)::before { content: 'Ações'; }
+
+  .member-list-table tbody td:nth-child(3) > span,
+  .member-list-table tbody td:nth-child(5) > div {
+    justify-self: end;
+  }
+
+  .member-list-table tbody td:nth-child(5) > div {
+    flex-wrap: wrap;
+  }
+
+  .member-list-table tbody td button {
+    min-height: 44px;
+  }
+
+  .receipt-stamp {
+    position: relative;
+    inset: auto;
+    width: max-content;
+    margin: 0 0 1rem auto;
+    font-size: 0.85rem;
+  }
+
+  .receipt-header {
+    align-items: flex-start;
+  }
+
+  .receipt-header h3 {
+    font-size: 1.05rem;
+  }
+
+  .receipt-details > div {
+    gap: 0.75rem;
+  }
+
+  .receipt-details > div > :last-child {
+    max-width: 58%;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .receipt-barcode > div {
+    overflow: hidden;
+    font-size: clamp(0.7rem, 4.4vw, 1rem);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .tab-content .cafe-button,
+  .signed-game-toolbar button {
+    min-height: 44px;
+  }
+
+  .fixed.inset-0 {
+    align-items: flex-start;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  footer {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media screen and (max-width: 520px) {
+  .app-header-main {
+    width: 100%;
+  }
+
+  .user-account-badge {
+    width: 100%;
+  }
+
+  .account-title-hover {
+    max-width: min(35vw, 8.5rem);
+    overflow: hidden;
+  }
+
+  .account-title-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .account-game-link,
+  .account-logout {
+    width: 44px;
+    height: 44px;
+  }
+
+  .account-admin-link {
+    min-height: 44px;
+  }
+}
+
+@media screen and (max-width: 420px) {
+  .receipt-search-row {
+    flex-direction: column;
+  }
+
+  .receipt-search-row .cafe-button,
+  .receipt-actions .cafe-button {
+    width: 100%;
+  }
+
+  .receipt-details > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .receipt-details > div > :last-child {
+    max-width: 100%;
+    text-align: left;
+  }
+}
+
+@media screen and (max-width: 340px) {
+  .app-header-shell {
+    padding-inline: 0.45rem;
+  }
+
+  .user-account-badge {
+    gap: 0.35rem;
+    padding: 0.35rem;
+  }
+
+  .user-account-name strong {
+    max-width: 58px;
+  }
+
+  .account-title-hover {
+    max-width: 92px;
+  }
+
+  .app-banner {
+    font-size: 0.68rem;
+  }
+
+  .tab-content h2 {
+    font-size: 1.3rem;
+  }
+
+  .stat-tile {
+    padding: 0.55rem;
+  }
+
+  .stat-tile__value {
+    font-size: 1.1rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .clicker-login *, .clicker-login *::before, .clicker-login *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
   [class*='rank-'], [class*='rank-']::before, [class*='rank-']::after, [class*='rank-'] .profile-external-border { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
