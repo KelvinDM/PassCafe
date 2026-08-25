@@ -81,7 +81,7 @@ function formatGameNumber(value) {
     <div class="level-track">
       <div class="level-copy"><span>{{ gameStatus }}</span><strong>{{ Math.floor(levelProgress) }}%</strong></div>
       <div class="level-bar"><i :style="{ width: `${levelProgress}%` }"></i></div>
-      <div class="level-goal">PRÓXIMO NÍVEL EM {{ formatGameNumber(levelTarget - totalBrewed) }} CAFÉS</div>
+      <div class="level-goal">PRÓXIMO NÍVEL DO GAME EM {{ formatGameNumber(levelTarget - totalBrewed) }} CAFÉS</div>
     </div>
   </section>
 
@@ -161,11 +161,12 @@ function formatGameNumber(value) {
         <Icon :icon="canRebirth ? 'pixelarticons:repeat' : 'pixelarticons:lock'" />
         {{ rebirthConfirming ? 'CONFIRMAR RENASCIMENTO' : canRebirth ? 'RENASCER AGORA' : `DESBLOQUEIA NO NÍVEL ${rebirthLevel}` }}
       </button>
+      <small class="rebirth-rule">Reinicia somente a rodada do game. Perfil, renascimentos, habilidades e CoinFés são permanentes. Perfil: +5 por mensalidade, +1 por renascimento e +1 a cada 10 níveis máximos do game.</small>
     </div>
 
     <div class="shop-tip">
       <Icon :icon="shopView === 'upgrades' ? 'pixelarticons:trending-up' : 'pixelarticons:coin'" />
-      <span>{{ shopView === 'upgrades' ? 'Upgrades são reiniciados ao renascer.' : 'Habilidades e CoinFés permanecem após cada renascimento.' }}</span>
+      <span>{{ shopView === 'upgrades' ? 'Só o game e seus upgrades reiniciam; o nível do perfil nunca é zerado.' : 'Habilidades, CoinFés e nível do perfil permanecem após cada renascimento.' }}</span>
     </div>
     </div>
   </aside>

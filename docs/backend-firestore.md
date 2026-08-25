@@ -126,7 +126,7 @@ Resumo:
 - escrita de `passcafe/settings` somente para Mestre;
 - criacao de novos documentos `admins/{uid}` somente para Mestre;
 - criacao/atualizacao de integrantes liberada para manter o fluxo publico de pagamento/entrada;
-- exclusao de integrantes somente para Mestre/Aprendiz;
+- exclusao de integrantes somente para Mestre ou para o proprio usuario que criou a entrada, desde que ainda nao esteja quitada no mes;
 - qualquer outro caminho fica bloqueado.
 
 ## Publicar regras

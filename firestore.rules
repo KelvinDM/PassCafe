@@ -55,7 +55,7 @@ service cloud.firestore {
     }
 
     function isValidMember(memberId) {
-      return hasOnlyKeys(['id', 'name', 'dept', 'status', 'paidAt', 'createdByUid', 'createdByEmail', 'createdAt', 'updatedByUid', 'updatedByEmail', 'updatedAt'])
+      return hasOnlyKeys(['id', 'name', 'dept', 'status', 'paidAt', 'paymentCount', 'totalContributed', 'lastProfilePaymentMonth', 'lastApprovedPaymentAt', 'createdByUid', 'createdByEmail', 'createdAt', 'updatedByUid', 'updatedByEmail', 'updatedAt'])
         && request.resource.data.id == memberId
         && isString(request.resource.data.name)
         && request.resource.data.name.size() <= 120
@@ -63,6 +63,10 @@ service cloud.firestore {
         && request.resource.data.dept.size() <= 80
         && request.resource.data.status in ['PAID', 'UNPAID', 'PENDING']
         && isOptionalString(request.resource.data.paidAt)
+        && isOptionalNonNegativeNumber(request.resource.data.paymentCount)
+        && isOptionalNonNegativeNumber(request.resource.data.totalContributed)
+        && isOptionalString(request.resource.data.lastProfilePaymentMonth)
+        && isOptionalString(request.resource.data.lastApprovedPaymentAt)
         && isOptionalString(request.resource.data.createdByUid)
         && isOptionalString(request.resource.data.createdByEmail)
         && isOptionalString(request.resource.data.createdAt)
@@ -76,6 +80,19 @@ service cloud.firestore {
         && isValidMember(memberId)
         && request.resource.data.status in ['UNPAID', 'PENDING']
         && request.resource.data.paidAt == null
+        && (
+          (!exists(/databases/$(database)/documents/passcafeMembers/$(memberId))
+            && memberId == request.auth.uid
+            && request.resource.data.paymentCount == null
+            && request.resource.data.totalContributed == null
+            && request.resource.data.lastProfilePaymentMonth == null
+            && request.resource.data.lastApprovedPaymentAt == null)
+          || (exists(/databases/$(database)/documents/passcafeMembers/$(memberId))
+            && (resource.data.get('createdByUid', null) == request.auth.uid || resource.data.get('createdByUid', null) == null)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dept', 'status', 'paidAt', 'createdByUid', 'createdByEmail', 'createdAt', 'updatedByUid', 'updatedByEmail', 'updatedAt']))
+        )
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.createdByEmail == request.auth.token.email
         && request.resource.data.updatedByUid == request.auth.uid
         && request.resource.data.updatedByEmail == request.auth.token.email
         && (!exists(/databases/$(database)/documents/passcafeMembers/$(memberId))
@@ -122,7 +139,9 @@ service cloud.firestore {
         && request.resource.data.reviewedAt == null
         && request.resource.data.reviewedBy == null
         && request.resource.data.requestedByUid == request.auth.uid
-        && request.resource.data.requestedByEmail == request.auth.token.email;
+        && request.resource.data.requestedByEmail == request.auth.token.email
+        && exists(/databases/$(database)/documents/passcafeMembers/$(request.resource.data.memberId))
+        && get(/databases/$(database)/documents/passcafeMembers/$(request.resource.data.memberId)).data.createdByUid == request.auth.uid;
     }
 
     function isValidAuditLog() {
@@ -139,12 +158,16 @@ service cloud.firestore {
     function isValidClickerSave(userId) {
       return request.auth != null
         && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['uid', 'coins', 'total', 'sceneVariant', 'coinFes', 'rebirths', 'upgrades', 'skills', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'coins', 'total', 'lifetimeBrewed', 'highestGameLevel', 'sceneVariant', 'coinFes', 'rebirths', 'upgrades', 'skills', 'updatedAt'])
         && request.resource.data.uid == userId
         && request.resource.data.coins is number
         && request.resource.data.coins >= 0
         && request.resource.data.total is number
         && request.resource.data.total >= 0
+        && request.resource.data.lifetimeBrewed is number
+        && request.resource.data.lifetimeBrewed >= request.resource.data.total
+        && request.resource.data.highestGameLevel is number
+        && request.resource.data.highestGameLevel >= 1
         && request.resource.data.sceneVariant is number
         && request.resource.data.sceneVariant >= 0
         && request.resource.data.coinFes is number
@@ -162,13 +185,20 @@ service cloud.firestore {
         && isOptionalNonNegativeNumber(request.resource.data.upgrades.legendary)
         && isOptionalNonNegativeNumber(request.resource.data.upgrades.franchise)
         && request.resource.data.skills is map
-        && request.resource.data.skills.keys().hasOnly(['origin', 'rapid', 'automatic', 'supplier', 'critical', 'temporal'])
+        && request.resource.data.skills.keys().hasOnly(['origin', 'rapid', 'automatic', 'supplier', 'critical', 'temporal', 'precision', 'roastery', 'nightshift', 'network', 'warehouse', 'pilgrimage', 'legacy'])
         && isOptionalNonNegativeNumber(request.resource.data.skills.origin)
         && isOptionalNonNegativeNumber(request.resource.data.skills.rapid)
         && isOptionalNonNegativeNumber(request.resource.data.skills.automatic)
         && isOptionalNonNegativeNumber(request.resource.data.skills.supplier)
         && isOptionalNonNegativeNumber(request.resource.data.skills.critical)
         && isOptionalNonNegativeNumber(request.resource.data.skills.temporal)
+        && isOptionalNonNegativeNumber(request.resource.data.skills.precision)
+        && isOptionalNonNegativeNumber(request.resource.data.skills.roastery)
+        && isOptionalNonNegativeNumber(request.resource.data.skills.nightshift)
+        && isOptionalNonNegativeNumber(request.resource.data.skills.network)
+        && isOptionalNonNegativeNumber(request.resource.data.skills.warehouse)
+        && isOptionalNonNegativeNumber(request.resource.data.skills.pilgrimage)
+        && isOptionalNonNegativeNumber(request.resource.data.skills.legacy)
         && request.resource.data.updatedAt is string;
     }
 
@@ -187,7 +217,10 @@ service cloud.firestore {
     match /passcafeMembers/{memberId} {
       allow read: if true;
       allow create, update: if (isCafeStaff() && isValidMember(memberId)) || isPublicMemberWrite(memberId);
-      allow delete: if request.auth != null;
+      allow delete: if request.auth != null
+        && (isMaster()
+          || (resource.data.createdByUid == request.auth.uid
+            && resource.data.status != 'PAID'));
     }
 
     match /paymentRequests/{requestId} {

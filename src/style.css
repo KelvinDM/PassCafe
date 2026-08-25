@@ -262,7 +262,7 @@ select.comic-border:hover {
 }
 
 .app-header-shell {
-  width: min(100%, 1400px);
+  width: 100%;
   margin: 0 auto;
   padding: 0.75rem 1rem 0.65rem;
   display: grid;
@@ -333,12 +333,14 @@ select.comic-border:hover {
 .user-account-badge {
   grid-column: 3;
   grid-row: 1;
+  justify-self: end;
   position: relative;
-  min-width: 225px;
-  max-width: min(340px, 48vw);
-  min-height: 58px;
+  width: max-content;
+  min-width: 0;
+  max-width: none;
+  min-height: 68px;
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 34px;
+  grid-template-columns: 42px minmax(0, 1fr);
   align-items: center;
   gap: 0.65rem;
   padding: 0.4rem 0.45rem;
@@ -387,6 +389,7 @@ select.comic-border:hover {
 
 .avatar-crown {
   position: absolute;
+  z-index: 2;
   top: -17px;
   left: 50%;
   width: 25px;
@@ -399,7 +402,13 @@ select.comic-border:hover {
 }
 
 .avatar-crown svg { width: 22px; height: 22px; }
-.user-account-copy { min-width: 0; }
+.user-account-copy {
+  width: max-content;
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  align-content: center;
+}
 
 .user-role-label {
   display: flex;
@@ -414,7 +423,600 @@ select.comic-border:hover {
 
 .is-master .user-role-label { color: #f7c969; }
 .user-role-label svg { width: 13px; height: 13px; }
-.user-account-copy strong { display: block; margin-top: 0.3rem; overflow: hidden; color: #fffdf9; font-size: 0.78rem; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+.user-account-name {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  min-width: 0;
+  margin-top: 0.3rem;
+}
+
+.user-account-name strong {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 112px;
+  overflow: hidden;
+  color: #fffdf9;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-level-inline,
+.account-title-hover {
+  flex: 0 0 auto;
+  border: 2px solid #1f120b;
+  border-radius: 4px;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.5rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: 2px 2px 0 #1f120b;
+}
+
+.account-level-inline {
+  padding: 0.18rem 0.3rem;
+  background: #f7c969;
+  color: #1f120b;
+}
+
+.account-title-hover {
+  position: relative;
+  z-index: 5;
+  isolation: isolate;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: none;
+  padding: 0.18rem 0.34rem;
+  overflow: visible;
+  cursor: help;
+  background: #f8ead6;
+  color: #3d2314;
+}
+
+.account-title-text {
+  display: block;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.account-title-hover:hover,
+.account-title-hover:focus-visible {
+  z-index: 120;
+}
+
+.account-title-hover.is-uncommon { background: #bbf7d0; color: #0f3b2e; }
+.account-title-hover.is-rare { background: linear-gradient(90deg, #7dd3fc, #c4b5fd); color: #172554; box-shadow: 2px 2px 0 #1f120b, 0 0 14px rgba(125, 211, 252, 0.45); }
+.account-title-hover.is-epic { background: linear-gradient(90deg, #f0abfc, #fbbf24); color: #2e1065; box-shadow: 2px 2px 0 #1f120b, 0 0 18px rgba(240, 171, 252, 0.65); animation: rareBadgePulse 2.6s ease-in-out infinite; }
+.account-title-hover.is-legendary { background: linear-gradient(90deg, #f97316, #fde047, #34d399); color: #1f120b; box-shadow: 2px 2px 0 #1f120b, 0 0 22px rgba(253, 224, 71, 0.8); animation: legendaryBadgeGlow 1.9s ease-in-out infinite; }
+.account-title-hover.is-mythic { background: linear-gradient(110deg, #22d3ee, #a78bfa, #fb7185, #facc15); background-size: 220% 100%; color: #fffdf9; text-shadow: 1px 1px 0 #1f120b; box-shadow: 2px 2px 0 #1f120b, 0 0 28px rgba(167, 139, 250, 0.9); animation: mythicBadgeShift 1.7s linear infinite; }
+.account-title-hover.is-secret { background: linear-gradient(90deg, #111827, #7c2d12, #fef08a, #111827); background-size: 240% 100%; color: #fef08a; text-shadow: 1px 1px 0 #000; box-shadow: 2px 2px 0 #1f120b, 0 0 0 2px #fef08a, 0 0 34px rgba(254, 240, 138, 0.95); animation: secretBadgeOverload 1.2s steps(2) infinite, mythicBadgeShift 2.2s linear infinite; }
+
+.account-title-hover::before,
+.account-title-hover::after {
+  position: absolute;
+  right: 0;
+  z-index: 130;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(8px) scale(0.96);
+  transform-origin: right bottom;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.account-title-hover::before {
+  content: attr(data-tooltip);
+  bottom: calc(100% + 10px);
+  width: max-content;
+  max-width: clamp(180px, 24vw, 280px);
+  padding: 0.55rem 0.7rem;
+  border: 3px solid #1f120b;
+  border-radius: 6px;
+  background: #fffdf9;
+  color: #1f120b;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: none;
+  white-space: normal;
+  box-shadow: 4px 4px 0 #1f120b;
+}
+
+.account-title-hover::after {
+  content: '';
+  right: 18px;
+  bottom: calc(100% + 1px);
+  width: 13px;
+  height: 13px;
+  border-right: 3px solid #1f120b;
+  border-bottom: 3px solid #1f120b;
+  background: #fffdf9;
+  transform: translateY(8px) rotate(45deg) scale(0.96);
+}
+
+.account-title-hover:hover::before,
+.account-title-hover:focus-visible::before {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.account-title-hover:hover::after,
+.account-title-hover:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0) rotate(45deg) scale(1);
+}
+
+.account-title-hover.is-uncommon::before,
+.account-title-hover.is-uncommon::after { background: #dcfce7; }
+.account-title-hover.is-rare::before,
+.account-title-hover.is-rare::after { background: linear-gradient(90deg, #dbeafe, #ede9fe); }
+.account-title-hover.is-epic::before,
+.account-title-hover.is-epic::after { background: linear-gradient(90deg, #fae8ff, #fef3c7); }
+.account-title-hover.is-legendary::before,
+.account-title-hover.is-legendary::after { background: linear-gradient(90deg, #ffedd5, #fef08a, #bbf7d0); }
+.account-title-hover.is-mythic::before,
+.account-title-hover.is-mythic::after {
+  background: linear-gradient(110deg, #22d3ee, #a78bfa, #fb7185, #facc15);
+  background-size: 220% 100%;
+  color: #fffdf9;
+  text-shadow: 1px 1px 0 #1f120b;
+  animation: mythicBadgeShift 1.7s linear infinite;
+}
+.account-title-hover.is-secret::before,
+.account-title-hover.is-secret::after {
+  background: linear-gradient(90deg, #111827, #7c2d12, #fef08a, #111827);
+  background-size: 240% 100%;
+  color: #fef08a;
+  text-shadow: 1px 1px 0 #000;
+  animation: secretBadgeOverload 1.2s steps(2) infinite, mythicBadgeShift 2.2s linear infinite;
+}
+
+.level-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.75rem;
+}
+
+.level-preview-item {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 58px;
+  padding: 0.65rem;
+  background: #fffdf9;
+  color: #1f120b;
+  box-shadow: 3px 3px 0 #1f120b;
+}
+
+.level-preview-level {
+  grid-row: span 2;
+  min-width: 48px;
+  padding: 0.35rem 0.4rem;
+  border: 2px solid #1f120b;
+  border-radius: 4px;
+  background: #3d2314;
+  color: #f7c969;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.58rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.level-preview-avatar {
+  grid-row: span 2;
+  width: 38px;
+  height: 38px;
+  background: #fbf3e8;
+}
+
+.level-preview-avatar > svg {
+  width: 21px;
+  height: 21px;
+}
+
+.level-preview-badge {
+  position: relative;
+  isolation: isolate;
+  display: block;
+  min-width: 0;
+  padding: 0.35rem 0.55rem;
+  overflow: hidden;
+  border: 2px solid #1f120b;
+  border-radius: 4px;
+  background: #f8ead6;
+  color: #3d2314;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.64rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: 2px 2px 0 #1f120b;
+}
+
+.level-preview-badge span {
+  position: relative;
+  z-index: 2;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.level-preview-rarity {
+  color: #806554;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.52rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.level-preview-badge.is-uncommon { background: #bbf7d0; color: #0f3b2e; }
+.level-preview-badge.is-rare { background: linear-gradient(90deg, #7dd3fc, #c4b5fd); color: #172554; box-shadow: 2px 2px 0 #1f120b, 0 0 14px rgba(125, 211, 252, 0.45); }
+.level-preview-badge.is-epic { background: linear-gradient(90deg, #f0abfc, #fbbf24); color: #2e1065; box-shadow: 2px 2px 0 #1f120b, 0 0 18px rgba(240, 171, 252, 0.65); animation: rareBadgePulse 2.6s ease-in-out infinite; }
+.level-preview-badge.is-legendary { background: linear-gradient(90deg, #f97316, #fde047, #34d399); color: #1f120b; box-shadow: 2px 2px 0 #1f120b, 0 0 22px rgba(253, 224, 71, 0.8); animation: legendaryBadgeGlow 1.9s ease-in-out infinite; }
+.level-preview-badge.is-mythic { background: linear-gradient(110deg, #22d3ee, #a78bfa, #fb7185, #facc15); background-size: 220% 100%; color: #fffdf9; text-shadow: 1px 1px 0 #1f120b; box-shadow: 2px 2px 0 #1f120b, 0 0 28px rgba(167, 139, 250, 0.9); animation: mythicBadgeShift 1.7s linear infinite; }
+.level-preview-badge.is-secret { background: linear-gradient(90deg, #111827, #7c2d12, #fef08a, #111827); background-size: 240% 100%; color: #fef08a; text-shadow: 1px 1px 0 #000; box-shadow: 2px 2px 0 #1f120b, 0 0 0 2px #fef08a, 0 0 34px rgba(254, 240, 138, 0.95); animation: secretBadgeOverload 1.2s steps(2) infinite, mythicBadgeShift 2.2s linear infinite; }
+
+.level-preview-badge.rank-planilha::after,
+.level-preview-badge.rank-xama::after,
+.level-preview-badge.rank-latteiro::after,
+.level-preview-badge.rank-capuccino::after,
+.level-preview-badge.rank-cafeina::after,
+.level-preview-badge.rank-bule::after,
+.level-preview-badge.rank-arqueologo::after,
+.level-preview-badge.rank-oraculo::after,
+.level-preview-badge.rank-imperador::after,
+.level-preview-badge.rank-entidade::after,
+.level-preview-badge.rank-patrono::after,
+.level-preview-badge.rank-pix::after,
+.level-preview-badge.rank-lenda::after,
+.level-preview-badge.rank-cafezord::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Cada titulo possui uma assinatura propria. Os seis primeiros sao propositalmente estaticos. */
+.rank-coador { --rank-a: #e8cda4; --rank-b: #8b5a2b; --rank-ink: #382114; --rank-glow: rgba(232, 205, 164, 0); }
+.rank-pingado { --rank-a: #e9a75b; --rank-b: #873f1c; --rank-ink: #35180b; --rank-glow: rgba(233, 167, 91, 0); }
+.rank-garrafa { --rank-a: #a9c8d8; --rank-b: #42677b; --rank-ink: #163342; --rank-glow: rgba(169, 200, 216, 0); }
+.rank-copinho { --rank-a: #83dfad; --rank-b: #167a55; --rank-ink: #073c2a; --rank-glow: rgba(131, 223, 173, 0); }
+.rank-boletos { --rank-a: #50c8bd; --rank-b: #116c73; --rank-ink: #063a40; --rank-glow: rgba(80, 200, 189, 0); }
+.rank-espuma { --rank-a: #c5e699; --rank-b: #54852b; --rank-ink: #27420d; --rank-glow: rgba(197, 230, 153, 0); }
+.rank-planilha { --rank-a: #4ac8f5; --rank-b: #3158d4; --rank-ink: #071f4c; --rank-glow: rgba(54, 189, 245, 0.78); }
+.rank-xama { --rank-a: #c084fc; --rank-b: #5b21b6; --rank-ink: #fff7ff; --rank-glow: rgba(168, 85, 247, 0.82); }
+.rank-latteiro { --rank-a: #4de9ff; --rank-b: #075dc5; --rank-ink: #031b3b; --rank-glow: rgba(34, 211, 238, 0.9); }
+.rank-capuccino { --rank-a: #ffb21c; --rank-b: #d93611; --rank-ink: #351006; --rank-glow: rgba(255, 102, 18, 0.9); }
+.rank-cafeina { --rank-a: #d8ff35; --rank-b: #36a71d; --rank-ink: #173804; --rank-glow: rgba(178, 255, 45, 0.85); }
+.rank-bule { --rank-a: #ff5b9d; --rank-b: #8b174b; --rank-ink: #fff4f8; --rank-glow: rgba(255, 70, 145, 0.88); }
+.rank-arqueologo { --rank-a: #ffd166; --rank-b: #a45d12; --rank-ink: #3d2203; --rank-glow: rgba(255, 193, 55, 0.9); }
+.rank-oraculo { --rank-a: #35f2a0; --rank-b: #046c55; --rank-ink: #022f29; --rank-glow: rgba(31, 239, 157, 0.9); }
+.rank-imperador { --rank-a: #ffcf33; --rank-b: #c51f16; --rank-ink: #fff8dc; --rank-glow: rgba(255, 76, 20, 0.95); }
+.rank-entidade { --rank-a: #ec73ff; --rank-b: #3422a8; --rank-ink: #fff8ff; --rank-glow: rgba(191, 86, 255, 0.95); }
+.rank-patrono { --rank-a: #c5fbff; --rank-b: #4c6ee8; --rank-ink: #082158; --rank-glow: rgba(125, 231, 255, 0.95); }
+.rank-pix { --rank-a: #78ffcd; --rank-b: #7c3aed; --rank-ink: #ffffff; --rank-glow: rgba(70, 255, 203, 1); }
+.rank-lenda { --rank-a: #fff5a8; --rank-b: #e6a700; --rank-ink: #3b2600; --rank-glow: rgba(255, 226, 74, 1); }
+.rank-cafezord { --rank-a: #fff2a0; --rank-b: #111018; --rank-ink: #fff8c7; --rank-glow: rgba(255, 238, 91, 1); }
+
+.account-title-hover[class*='rank-'],
+.level-preview-badge[class*='rank-'] {
+  background: var(--rank-a);
+  color: var(--rank-ink);
+  border-color: color-mix(in srgb, var(--rank-b) 75%, #1f120b);
+  box-shadow: 2px 2px 0 #1f120b, 0 0 13px var(--rank-glow);
+}
+
+.account-level-inline[class*='rank-'],
+.level-preview-level[class*='rank-'] {
+  border-color: color-mix(in srgb, var(--rank-b) 78%, #1f120b);
+  background: color-mix(in srgb, var(--rank-b) 72%, #1f120b);
+  color: color-mix(in srgb, var(--rank-a) 88%, white);
+}
+
+.level-preview-item[class*='rank-'] {
+  border-color: color-mix(in srgb, var(--rank-b) 72%, #1f120b);
+  box-shadow: 3px 3px 0 #1f120b, 0 0 16px color-mix(in srgb, var(--rank-glow) 55%, transparent);
+}
+
+.level-preview-item[class*='rank-'] .level-preview-rarity { color: var(--rank-b); }
+
+.user-account-badge[class*='rank-'] {
+  border-color: var(--rank-a);
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--rank-b) 30%, #28150d), #35200e 56%, color-mix(in srgb, var(--rank-a) 12%, #28150d));
+  box-shadow: 0 0 0 2px var(--rank-b), 5px 5px 0 #1f120b, 0 0 18px var(--rank-glow);
+}
+
+.user-avatar[class*='rank-'] {
+  border-color: var(--rank-a);
+  box-shadow: 0 0 0 2px var(--rank-b), 0 0 12px var(--rank-glow);
+}
+
+.profile-external-border {
+  display: none;
+}
+
+.user-account-badge:is(
+  .rank-planilha,
+  .rank-xama,
+  .rank-latteiro,
+  .rank-capuccino,
+  .rank-cafeina,
+  .rank-bule,
+  .rank-arqueologo,
+  .rank-oraculo,
+  .rank-imperador,
+  .rank-entidade,
+  .rank-patrono,
+  .rank-pix,
+  .rank-lenda,
+  .rank-cafezord
+) > .profile-external-border,
+.level-preview-item:is(
+  .rank-planilha,
+  .rank-xama,
+  .rank-latteiro,
+  .rank-capuccino,
+  .rank-cafeina,
+  .rank-bule,
+  .rank-arqueologo,
+  .rank-oraculo,
+  .rank-imperador,
+  .rank-entidade,
+  .rank-patrono,
+  .rank-pix,
+  .rank-lenda,
+  .rank-cafezord
+) > .profile-external-border {
+  display: block;
+  position: absolute;
+  inset: -8px;
+  z-index: 2;
+  padding: 3px;
+  border-radius: 11px;
+  pointer-events: none;
+  background: conic-gradient(from var(--profile-border-angle), transparent 0 10%, var(--rank-b) 23%, var(--rank-a) 40%, transparent 55% 70%, var(--rank-a) 84%, transparent 100%) border-box;
+  filter: drop-shadow(0 0 6px var(--rank-glow));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: profileBorderOrbit var(--profile-border-speed, 2.4s) linear infinite;
+}
+
+/* A moldura do avatar acompanha os ranks que possuem efeito no badge. */
+.user-avatar:is(
+  .rank-planilha,
+  .rank-xama,
+  .rank-latteiro,
+  .rank-capuccino,
+  .rank-cafeina,
+  .rank-bule,
+  .rank-arqueologo,
+  .rank-oraculo,
+  .rank-imperador,
+  .rank-entidade,
+  .rank-patrono,
+  .rank-pix,
+  .rank-lenda,
+  .rank-cafezord
+) {
+  isolation: isolate;
+  animation: profileBorderPulse var(--profile-border-speed, 2.4s) ease-in-out infinite;
+}
+
+.user-avatar:is(
+  .rank-planilha,
+  .rank-xama,
+  .rank-latteiro,
+  .rank-capuccino,
+  .rank-cafeina,
+  .rank-bule,
+  .rank-arqueologo,
+  .rank-oraculo,
+  .rank-imperador,
+  .rank-entidade,
+  .rank-patrono,
+  .rank-pix,
+  .rank-lenda,
+  .rank-cafezord
+)::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  z-index: -1;
+  padding: 2px;
+  border-radius: 9px;
+  pointer-events: none;
+  background: conic-gradient(from var(--profile-border-angle), transparent 0 12%, var(--rank-b) 25%, var(--rank-a) 43%, transparent 58% 72%, var(--rank-a) 86%, transparent 100%) border-box;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: profileBorderOrbit var(--profile-border-speed, 2.4s) linear infinite;
+}
+
+.rank-planilha { --profile-border-speed: 3.2s; }
+.rank-xama { --profile-border-speed: 2.8s; }
+.rank-latteiro { --profile-border-speed: 1.6s; }
+.rank-capuccino { --profile-border-speed: 1.35s; }
+.rank-cafeina { --profile-border-speed: 2s; }
+.rank-bule { --profile-border-speed: 2.5s; }
+.rank-arqueologo { --profile-border-speed: 3.5s; }
+.rank-oraculo { --profile-border-speed: 2.3s; }
+.rank-imperador { --profile-border-speed: 1.2s; }
+.rank-entidade { --profile-border-speed: 3.6s; }
+.rank-patrono { --profile-border-speed: 2.7s; }
+.rank-pix { --profile-border-speed: 1.1s; }
+.rank-lenda { --profile-border-speed: 2.4s; }
+.rank-cafezord { --profile-border-speed: 1.45s; }
+
+/* Agua em camadas */
+.account-title-hover.rank-planilha,
+.level-preview-badge.rank-planilha {
+  background: repeating-radial-gradient(ellipse at 50% 120%, #d8f7ff 0 8px, #66d5f5 9px 15px, #3674d9 16px 23px);
+  background-size: 130% 190%;
+  animation: rankWater 3.2s ease-in-out infinite;
+}
+.level-preview-badge.rank-planilha::after { background: linear-gradient(105deg, transparent 25%, rgba(255,255,255,.72) 48%, transparent 68%); animation: rankWaterShine 2.7s ease-in-out infinite; }
+.user-account-badge.rank-planilha { animation: frameWater 3.2s ease-in-out infinite; }
+
+/* Fumaca espiritual */
+.account-title-hover.rank-xama,
+.level-preview-badge.rank-xama {
+  background: linear-gradient(115deg, #241047, #7c3aed 35%, #e879f9 58%, #3b0764 82%);
+  background-size: 230% 100%;
+  text-shadow: 1px 1px 0 #1f120b;
+  animation: rankSpirit 3.7s ease-in-out infinite;
+}
+.level-preview-badge.rank-xama::after { background: conic-gradient(from 90deg, transparent, rgba(255,255,255,.38), transparent 34%); animation: rankSpiritOrb 4.4s linear infinite; }
+.user-account-badge.rank-xama { animation: frameSpirit 2.8s ease-in-out infinite; }
+
+/* Pulso eletrico azul */
+.account-title-hover.rank-latteiro,
+.level-preview-badge.rank-latteiro {
+  background: repeating-linear-gradient(120deg, #031b44 0 12px, #0875d1 13px 20px, #55efff 21px 24px, #07306b 25px 38px);
+  background-size: 210% 100%;
+  color: #eaffff;
+  text-shadow: 1px 1px 0 #031329;
+  animation: rankElectric 1.8s linear infinite;
+}
+.level-preview-badge.rank-latteiro::after { background: linear-gradient(90deg, transparent 0 43%, rgba(255,255,255,.95) 48% 51%, transparent 56%); animation: rankBolt 2.1s steps(7) infinite; }
+.user-account-badge.rank-latteiro { animation: frameElectric 1.6s steps(2) infinite; }
+
+/* Chama de cappuccino */
+.account-title-hover.rank-capuccino,
+.level-preview-badge.rank-capuccino {
+  background: linear-gradient(0deg, #9d180d, #f04a16 34%, #ff9f1c 63%, #ffe169 100%);
+  background-size: 100% 190%;
+  animation: rankCappuccinoFire 1.45s ease-in-out infinite;
+}
+.level-preview-badge.rank-capuccino::after { background: radial-gradient(ellipse at 20% 115%, #fff7a8 0 9%, transparent 10%), radial-gradient(ellipse at 55% 120%, #ffd23f 0 13%, transparent 14%), radial-gradient(ellipse at 84% 110%, #fff070 0 8%, transparent 9%); animation: rankFlames 1.1s ease-in-out infinite alternate; }
+.user-account-badge.rank-capuccino { animation: frameFire 1.35s ease-in-out infinite; }
+
+/* Cafeina radioativa */
+.account-title-hover.rank-cafeina,
+.level-preview-badge.rank-cafeina {
+  background: radial-gradient(circle at 16% 75%, #efff76 0 5%, transparent 6%), radial-gradient(circle at 72% 28%, #f4ff93 0 7%, transparent 8%), linear-gradient(110deg, #173b09, #65c329, #c9f72f);
+  background-size: 55px 55px, 72px 72px, 100% 100%;
+  animation: rankBubbles 2.2s linear infinite;
+}
+.level-preview-badge.rank-cafeina::after { background: radial-gradient(circle, rgba(255,255,255,.85) 0 7%, transparent 8%) 0 0 / 31px 31px; animation: rankToxicFizz 2.8s linear infinite; }
+.user-account-badge.rank-cafeina { animation: frameToxic 2s ease-in-out infinite; }
+
+/* Vapor rosado */
+.account-title-hover.rank-bule,
+.level-preview-badge.rank-bule {
+  background: linear-gradient(115deg, #5d1237, #d62970 40%, #ff77aa 60%, #861044);
+  background-size: 220% 100%;
+  text-shadow: 1px 1px 0 #3a0921;
+  animation: rankSteam 3.1s ease-in-out infinite;
+}
+.level-preview-badge.rank-bule::after { background: repeating-linear-gradient(75deg, transparent 0 18px, rgba(255,240,247,.65) 20px 23px, transparent 26px 38px); animation: rankSteamRise 2.4s linear infinite; }
+.user-account-badge.rank-bule { animation: frameSteam 2.5s ease-in-out infinite; }
+
+/* Poeira de reliquia */
+.account-title-hover.rank-arqueologo,
+.level-preview-badge.rank-arqueologo {
+  background: radial-gradient(circle at 20% 30%, #fff4b8 0 2%, transparent 3%), radial-gradient(circle at 75% 67%, #fff7cf 0 2%, transparent 3%), linear-gradient(120deg, #6f3b0b, #d88b20 44%, #ffd978 62%, #8b4b0e);
+  background-size: 32px 32px, 47px 47px, 210% 100%;
+  animation: rankDust 4.6s linear infinite;
+}
+.level-preview-badge.rank-arqueologo::after { background: linear-gradient(100deg, transparent 35%, rgba(255,248,194,.82) 49%, transparent 62%); animation: rankRelic 3.3s ease-in-out infinite; }
+.user-account-badge.rank-arqueologo { animation: frameRelic 3.5s ease-in-out infinite; }
+
+/* Visao esmeralda */
+.account-title-hover.rank-oraculo,
+.level-preview-badge.rank-oraculo {
+  background: repeating-linear-gradient(90deg, #032f2a 0 9px, #08755b 10px 12px, #19d88c 13px 15px, #05493d 16px 25px);
+  background-size: 170% 100%;
+  color: #dbfff0;
+  text-shadow: 1px 1px 0 #012019;
+  animation: rankOracle 2.5s linear infinite;
+}
+.level-preview-badge.rank-oraculo::after { background: radial-gradient(ellipse at center, rgba(195,255,225,.7), transparent 55%); transform: scaleX(.15); animation: rankOracleEye 2.6s ease-in-out infinite; }
+.user-account-badge.rank-oraculo { animation: frameOracle 2.3s ease-in-out infinite; }
+
+/* Fogo imperial */
+.account-title-hover.rank-imperador,
+.level-preview-badge.rank-imperador {
+  background: linear-gradient(100deg, #4e0906, #c51f16 25%, #ff6b16 48%, #ffd43b 58%, #8e100b 82%);
+  background-size: 260% 100%;
+  color: #fffbe6;
+  text-shadow: 1px 1px 0 #460704;
+  animation: rankInferno 1.55s linear infinite;
+}
+.level-preview-badge.rank-imperador::after { background: repeating-radial-gradient(ellipse at 50% 120%, rgba(255,245,138,.8) 0 5%, rgba(255,75,15,.35) 7% 12%, transparent 14% 22%); animation: rankInfernoTongues 1s ease-in-out infinite alternate; }
+.user-account-badge.rank-imperador { animation: frameInferno 1.2s ease-in-out infinite; }
+
+/* Nebulosa cosmica */
+.account-title-hover.rank-entidade,
+.level-preview-badge.rank-entidade {
+  background: radial-gradient(circle at 15% 35%, #fff 0 1%, transparent 2%), radial-gradient(circle at 77% 65%, #b8f3ff 0 1.5%, transparent 2.5%), linear-gradient(120deg, #12052d, #4326a8, #d250d9, #13265f);
+  background-size: 29px 29px, 43px 43px, 240% 100%;
+  color: #fff;
+  text-shadow: 0 0 5px #fff, 1px 1px 0 #13051f;
+  animation: rankCosmos 5.5s linear infinite;
+}
+.level-preview-badge.rank-entidade::after { background: conic-gradient(from 0deg at 50% 50%, transparent, rgba(111,239,255,.45), transparent 35%, rgba(255,111,241,.4), transparent 72%); animation: rankGalaxy 5s linear infinite; }
+.user-account-badge.rank-entidade { animation: frameCosmos 3.6s ease-in-out infinite; }
+
+/* Cristal de gelo */
+.account-title-hover.rank-patrono,
+.level-preview-badge.rank-patrono {
+  background: linear-gradient(135deg, #eaffff 0 16%, #8ee8f6 17% 31%, #5479df 32% 48%, #d7fbff 49% 63%, #739bed 64% 80%, #f3ffff 81%);
+  background-size: 230% 100%;
+  animation: rankIce 3.2s ease-in-out infinite;
+}
+.level-preview-badge.rank-patrono::after { background: repeating-conic-gradient(from 45deg, transparent 0 10deg, rgba(255,255,255,.62) 11deg 14deg, transparent 15deg 30deg); animation: rankCrystal 4.8s linear infinite; }
+.user-account-badge.rank-patrono { animation: frameIce 2.7s ease-in-out infinite; }
+
+/* Plasma do Pix */
+.account-title-hover.rank-pix,
+.level-preview-badge.rank-pix {
+  background: repeating-linear-gradient(135deg, #062c2a 0 10px, #05b991 11px 17px, #78ffd4 18px 20px, #6132b5 21px 33px);
+  background-size: 230% 100%;
+  color: #fff;
+  text-shadow: 0 0 4px #07251f, 1px 1px 0 #100629;
+  animation: rankPlasma 1.25s linear infinite;
+}
+.level-preview-badge.rank-pix::after { background: linear-gradient(105deg, transparent 0 35%, #fff 38% 40%, transparent 43% 56%, #9effe5 58% 61%, transparent 64%); animation: rankLightning .95s steps(4) infinite; }
+.user-account-badge.rank-pix { animation: framePlasma 1.1s steps(3) infinite; }
+
+/* Luz sagrada */
+.account-title-hover.rank-lenda,
+.level-preview-badge.rank-lenda {
+  background: conic-gradient(from 0deg, #b77b00, #fff7a8, #e8a900, #fffbd8, #b77b00);
+  background-size: 190% 190%;
+  animation: rankHalo 4.5s linear infinite;
+}
+.level-preview-badge.rank-lenda::after { background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,.8) 0 4deg, transparent 5deg 18deg); animation: rankSunRays 6s linear infinite; }
+.user-account-badge.rank-lenda { animation: frameHalo 2.4s ease-in-out infinite; }
+
+/* Forma final prismatica */
+.account-title-hover.rank-cafezord,
+.level-preview-badge.rank-cafezord {
+  background: linear-gradient(105deg, #07070b, #4f1a67, #007f7a, #b87900, #7b123d, #07070b);
+  background-size: 330% 100%;
+  color: #fff9bd;
+  text-shadow: 0 0 7px #ffd84a, 1px 1px 0 #000;
+  border-color: #fff08a;
+  animation: rankFinal 2.2s linear infinite;
+}
+.level-preview-badge.rank-cafezord::after { background: linear-gradient(110deg, transparent 0 25%, rgba(255,255,255,.92) 30%, transparent 36% 62%, rgba(255,233,95,.8) 68%, transparent 74%); animation: rankFinalFlash 1.7s ease-in-out infinite; }
+.user-account-badge.rank-cafezord { animation: frameFinal 1.45s ease-in-out infinite; }
 
 .account-quick-actions {
   display: flex;
@@ -437,6 +1039,7 @@ select.comic-border:hover {
   font-size: 0.55rem;
   font-weight: 900;
   line-height: 1;
+  margin-right: 0;
 }
 
 .account-admin-link:hover { color: #fff3bd; border-color: #fff3bd; }
@@ -481,10 +1084,12 @@ select.comic-border:hover {
 }
 
 .account-logout {
-  width: 32px;
-  height: 32px;
-  display: grid;
+  width: 85px;
+  height: 26px;
+  display: inline-grid;
   place-items: center;
+  flex: 0 0 auto;
+  margin-left: auto;
   border: 2px solid #1f120b;
   border-radius: 4px;
   background: #ef4444;
@@ -1610,22 +2215,36 @@ select.comic-border:hover {
   .app-header-logo { width: 42px; height: 42px; flex-basis: 42px; }
   .app-header-brand h1 { font-size: 1.15rem; }
   .app-header-brand h1 span, .app-header-brand p { display: none; }
-  .user-account-badge { min-width: 0; max-width: 235px; grid-template-columns: 38px minmax(0, 1fr) 30px; gap: 0.45rem; min-height: 52px; }
+  .user-account-badge { width: max-content; min-width: 0; max-width: none; grid-template-columns: 38px minmax(0, 1fr); gap: 0.45rem; min-height: 62px; }
   .user-avatar { width: 38px; height: 38px; }
   .user-role-label { font-size: 0.48rem; }
-  .user-account-copy strong { max-width: 110px; font-size: 0.7rem; }
+  .user-account-name strong { max-width: 86px; font-size: 0.7rem; }
+  .account-level-inline, .account-title-hover { font-size: 0.43rem; }
+  .account-title-hover { min-width: 0; max-width: none; }
+  .account-title-hover::before {
+    max-width: min(210px, calc(100vw - 1.5rem));
+    padding: 0.45rem 0.55rem;
+    font-size: 0.54rem;
+  }
+  .account-title-hover::after { right: 14px; }
   .account-quick-actions { gap: 0.35rem; }
   .account-admin-link { font-size: 0.48rem; }
   .account-game-link { width: 22px; height: 22px; }
-  .account-logout { width: 29px; height: 29px; }
+  .account-logout { width: 28px; height: 24px; }
   .app-header-nav { justify-content: flex-start; }
+}
+
+@media (max-width: 520px) {
+  .app-header-main { justify-content: flex-end; }
+  .app-header-brand { display: none; }
+  .user-account-badge { width: max-content; min-width: 0; max-width: 100%; }
 }
 
 @media (max-width: 410px) {
   .app-header-logo { display: none; }
-  .app-header-brand h1 { font-size: 1rem; }
-  .user-account-badge { max-width: 245px; }
-  .user-account-copy strong { max-width: 92px; }
+  .user-account-name strong { max-width: 68px; }
+  .account-title-hover { min-width: 0; max-width: none; font-size: 0.4rem; }
+  .account-admin-link { max-width: 112px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
 .guest-save-notice {
@@ -2289,6 +2908,7 @@ select.comic-border:hover {
 .rebirth-card.ready .rebirth-button { border-color: #f7c969; background: #f7c969; color: #1f120b; }
 .rebirth-button.confirming { border-color: #fb7185 !important; background: #fb7185 !important; animation: confirmPulse 700ms steps(2) infinite; }
 .rebirth-button svg { width: 16px; height: 16px; }
+.rebirth-rule { display: block; margin-top: 0.55rem; color: #a99588; font-size: 0.56rem; font-weight: 700; line-height: 1.35; }
 
 .shop-tip {
   display: grid;
@@ -2468,6 +3088,69 @@ select.comic-border:hover {
 @keyframes donutOrbit { 0%, 100% { transform: translate(-90px, 0) rotate(-8deg); } 50% { transform: translate(90px, 10px) rotate(368deg); } }
 @keyframes confirmPulse { 50% { filter: brightness(1.3); } }
 @keyframes sceneFlash { from { opacity: 0.35; } to { opacity: 0; } }
+@keyframes rareBadgePulse { 50% { filter: saturate(1.25) brightness(1.08); } }
+@keyframes legendaryBadgeGlow { 50% { box-shadow: 2px 2px 0 #1f120b, 0 0 30px rgba(253, 224, 71, 1); transform: translateY(-1px); } }
+@keyframes mythicBadgeShift { to { background-position: 220% 0; } }
+@keyframes secretBadgeOverload { 50% { filter: contrast(1.2) brightness(1.2); } }
+@keyframes badgeShine { 0%, 35% { left: -35%; opacity: 0; } 50% { opacity: 0.85; } 78%, 100% { left: 125%; opacity: 0; } }
+@keyframes profileBorderPulse {
+  0%, 100% {
+    border-color: var(--rank-a);
+    box-shadow: 0 0 0 2px var(--rank-b), 0 0 10px color-mix(in srgb, var(--rank-glow) 70%, transparent);
+  }
+  50% {
+    border-color: color-mix(in srgb, var(--rank-a) 65%, white);
+    box-shadow: 0 0 0 3px var(--rank-a), 0 0 24px var(--rank-glow);
+  }
+}
+@property --profile-border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes profileBorderOrbit { to { --profile-border-angle: 360deg; } }
+@keyframes rankWater { 0%, 100% { background-position: 50% 15%; } 50% { background-position: 50% 85%; filter: brightness(1.12); } }
+@keyframes rankWaterShine { 0%, 20% { transform: translateX(-120%); opacity: 0; } 45% { opacity: .8; } 75%, 100% { transform: translateX(120%); opacity: 0; } }
+@keyframes frameWater { 0%, 100% { box-shadow: 0 0 0 2px #3158d4, 5px 5px 0 #1f120b, 0 0 10px rgba(54,189,245,.55); } 50% { box-shadow: 0 0 0 3px #76e6ff, 5px 5px 0 #1f120b, 0 0 27px rgba(54,189,245,.95); } }
+@keyframes rankSpirit { 0%, 100% { background-position: 0 0; filter: hue-rotate(0deg); } 50% { background-position: 100% 0; filter: hue-rotate(24deg) brightness(1.15); } }
+@keyframes rankSpiritOrb { to { transform: rotate(360deg) scale(1.35); } }
+@keyframes frameSpirit { 0%, 100% { box-shadow: 0 0 0 2px #5b21b6, 5px 5px 0 #1f120b, 0 0 15px rgba(168,85,247,.65); } 50% { box-shadow: 0 0 0 2px #e879f9, 5px 5px 0 #1f120b, -7px 0 25px rgba(113,50,255,.9), 7px 0 25px rgba(232,121,249,.8); } }
+@keyframes rankElectric { to { background-position: 210% 0; } }
+@keyframes rankBolt { 0%, 28%, 32%, 68%, 72%, 100% { opacity: 0; transform: translateX(-75%); } 30%, 70% { opacity: 1; transform: translateX(80%); } }
+@keyframes frameElectric { 0%, 100% { border-color: #4de9ff; box-shadow: 0 0 0 2px #075dc5, 5px 5px 0 #1f120b, 0 0 10px #4de9ff; } 50% { border-color: #fff; box-shadow: 0 0 0 3px #4de9ff, 5px 5px 0 #1f120b, 0 0 30px #0ea5e9; } }
+@keyframes rankCappuccinoFire { 0%, 100% { background-position: 0 90%; filter: saturate(1); } 50% { background-position: 0 15%; filter: saturate(1.35) brightness(1.12); } }
+@keyframes rankFlames { from { transform: translateY(8px) scaleX(.9); } to { transform: translateY(-6px) scaleX(1.12); } }
+@keyframes frameFire { 0%, 100% { border-color: #ffb21c; box-shadow: 0 0 0 2px #d93611, 5px 5px 0 #1f120b, 0 4px 15px rgba(255,83,20,.7); } 50% { border-color: #fff082; box-shadow: 0 0 0 3px #ff6b16, 5px 5px 0 #1f120b, 0 -5px 29px rgba(255,76,15,1); } }
+@keyframes rankBubbles { to { background-position: 0 -55px, 0 -72px, 0 0; } }
+@keyframes rankToxicFizz { from { background-position: 0 35px; opacity: .25; } to { background-position: 15px -35px; opacity: .9; } }
+@keyframes frameToxic { 0%, 100% { box-shadow: 0 0 0 2px #36a71d, 5px 5px 0 #1f120b, 0 0 12px rgba(178,255,45,.65); } 50% { filter: saturate(1.35); box-shadow: 0 0 0 3px #d8ff35, 5px 5px 0 #1f120b, 0 0 25px rgba(137,255,46,.95), inset 0 0 14px rgba(196,255,43,.25); } }
+@keyframes rankSteam { 0%, 100% { background-position: 0 0; } 50% { background-position: 100% 0; filter: brightness(1.13); } }
+@keyframes rankSteamRise { from { background-position: 0 38px; opacity: .3; } to { background-position: 22px -38px; opacity: .8; } }
+@keyframes frameSteam { 0%, 100% { box-shadow: 0 0 0 2px #8b174b, 5px 5px 0 #1f120b, 0 0 13px rgba(255,70,145,.65); } 50% { box-shadow: 0 0 0 2px #ff9ac1, 5px 5px 0 #1f120b, 0 -8px 26px rgba(255,130,180,.9); filter: contrast(1.08); } }
+@keyframes rankDust { to { background-position: 32px -32px, -47px 47px, 210% 0; } }
+@keyframes rankRelic { 0%, 30% { transform: translateX(-120%) skewX(-15deg); opacity: 0; } 52% { opacity: .9; } 75%, 100% { transform: translateX(120%) skewX(-15deg); opacity: 0; } }
+@keyframes frameRelic { 0%, 100% { box-shadow: 0 0 0 2px #a45d12, 5px 5px 0 #1f120b, 0 0 12px rgba(255,193,55,.65); } 50% { box-shadow: 0 0 0 3px #ffe19a, 5px 5px 0 #1f120b, 0 0 28px rgba(255,179,26,.95); filter: sepia(.18) brightness(1.08); } }
+@keyframes rankOracle { to { background-position: 170% 0; } }
+@keyframes rankOracleEye { 0%, 100% { transform: scaleX(.08); opacity: .35; } 48%, 55% { transform: scaleX(.9); opacity: .9; } }
+@keyframes frameOracle { 0%, 100% { box-shadow: 0 0 0 2px #046c55, 5px 5px 0 #1f120b, 0 0 12px rgba(31,239,157,.6); } 50% { border-color: #a7ffd7; box-shadow: 0 0 0 2px #18d795, 5px 5px 0 #1f120b, 0 0 31px rgba(31,239,157,1), inset 0 0 12px rgba(54,255,176,.2); } }
+@keyframes rankInferno { to { background-position: 260% 0; } }
+@keyframes rankInfernoTongues { from { transform: translateY(10px) scale(.95); filter: blur(1px); } to { transform: translateY(-8px) scale(1.1); filter: blur(0); } }
+@keyframes frameInferno { 0%, 100% { box-shadow: 0 0 0 2px #c51f16, 5px 5px 0 #1f120b, 0 0 17px rgba(255,76,20,.8); } 50% { border-color: #fff27a; box-shadow: 0 0 0 3px #ff4c14, 5px 5px 0 #1f120b, 0 -8px 36px rgba(255,51,12,1), 0 7px 20px rgba(255,190,30,.8); } }
+@keyframes rankCosmos { to { background-position: 29px -29px, -43px 43px, 240% 0; } }
+@keyframes rankGalaxy { to { transform: rotate(360deg) scale(1.25); } }
+@keyframes frameCosmos { 0%, 100% { box-shadow: 0 0 0 2px #3422a8, 5px 5px 0 #1f120b, -8px 0 20px rgba(69,62,255,.65), 8px 0 20px rgba(236,115,255,.65); } 50% { border-color: #f4b3ff; box-shadow: 0 0 0 3px #7448df, 5px 5px 0 #1f120b, -12px -5px 32px rgba(69,124,255,.9), 12px 6px 32px rgba(236,115,255,.95); } }
+@keyframes rankIce { 0%, 100% { background-position: 0 0; } 50% { background-position: 100% 0; filter: brightness(1.2); } }
+@keyframes rankCrystal { to { transform: rotate(360deg) scale(1.3); } }
+@keyframes frameIce { 0%, 100% { box-shadow: 0 0 0 2px #4c6ee8, 5px 5px 0 #1f120b, 0 0 13px rgba(125,231,255,.75); } 50% { border-color: #f1ffff; box-shadow: 0 0 0 3px #9decff, 5px 5px 0 #1f120b, 0 0 31px rgba(125,231,255,1); filter: brightness(1.12); } }
+@keyframes rankPlasma { to { background-position: 230% 0; } }
+@keyframes rankLightning { 0%, 42%, 46%, 74%, 78%, 100% { opacity: .15; transform: translateX(-55%); } 44%, 76% { opacity: 1; transform: translateX(48%); } }
+@keyframes framePlasma { 0%, 100% { border-color: #78ffcd; box-shadow: 0 0 0 2px #7c3aed, 5px 5px 0 #1f120b, -8px 0 24px rgba(70,255,203,.8), 8px 0 20px rgba(124,58,237,.7); } 50% { border-color: #fff; box-shadow: 0 0 0 3px #42ffc7, 5px 5px 0 #1f120b, 10px -5px 36px rgba(70,255,203,1), -10px 5px 29px rgba(162,74,255,.95); } }
+@keyframes rankHalo { to { background-position: 190% 190%; } }
+@keyframes rankSunRays { to { transform: rotate(360deg) scale(1.5); } }
+@keyframes frameHalo { 0%, 100% { box-shadow: 0 0 0 2px #b77b00, 5px 5px 0 #1f120b, 0 0 18px rgba(255,226,74,.85); } 50% { border-color: #fffbd8; box-shadow: 0 0 0 4px #f4c32f, 5px 5px 0 #1f120b, 0 0 40px rgba(255,226,74,1), inset 0 0 18px rgba(255,249,174,.28); } }
+@keyframes rankFinal { to { background-position: 330% 0; filter: hue-rotate(360deg); } }
+@keyframes rankFinalFlash { 0%, 20% { transform: translateX(-125%); opacity: 0; } 45% { opacity: 1; } 72%, 100% { transform: translateX(125%); opacity: 0; } }
+@keyframes frameFinal { 0%, 100% { border-color: #fff2a0; box-shadow: 0 0 0 2px #8b5cf6, 5px 5px 0 #1f120b, -8px 0 25px #0fd6bd, 8px 0 25px #f04a9b; } 50% { border-color: #fff; box-shadow: 0 0 0 4px #ffe45f, 5px 5px 0 #1f120b, -13px -4px 38px #3debd5, 13px 5px 38px #ff4ea5, 0 0 46px #ffd83d; filter: contrast(1.14) brightness(1.12); } }
 
 @media (max-width: 1120px) {
   .clicker-layout { grid-template-columns: minmax(250px, 0.8fr) minmax(430px, 1.2fr); }
@@ -2643,6 +3326,7 @@ select.comic-border:hover {
 
 @media (prefers-reduced-motion: reduce) {
   .clicker-login *, .clicker-login *::before, .clicker-login *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+  [class*='rank-'], [class*='rank-']::before, [class*='rank-']::after, [class*='rank-'] .profile-external-border { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
 }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }

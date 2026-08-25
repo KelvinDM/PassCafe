@@ -98,7 +98,14 @@ const SKILL_TREE_CATALOG = [
   { id: 'automatic', name: 'Turno automático', description: '+25% de produção por segundo', icon: 'pixelarticons:repeat', baseCost: 1, maxLevel: 4, branch: 'auto', requires: { id: 'origin', level: 1 }, autoBonus: 0.25 },
   { id: 'supplier', name: 'Fornecedor VIP', description: '-7% no preço dos upgrades', icon: 'pixelarticons:briefcase-check', baseCost: 2, maxLevel: 3, branch: 'utility', requires: { id: 'origin', level: 1 }, discountBonus: 0.07 },
   { id: 'critical', name: 'Dose crítica', description: '+8% de chance de clique x5', icon: 'pixelarticons:zap', baseCost: 2, maxLevel: 3, branch: 'click', requires: { id: 'rapid', level: 2 }, criticalBonus: 0.08 },
-  { id: 'temporal', name: 'Cafeteira temporal', description: '+20% em toda produção', icon: 'pixelarticons:clock', baseCost: 3, maxLevel: 3, branch: 'auto', requires: { id: 'automatic', level: 2 }, globalBonus: 0.2 }
+  { id: 'temporal', name: 'Cafeteira temporal', description: '+20% em toda produção', icon: 'pixelarticons:clock', baseCost: 3, maxLevel: 3, branch: 'auto', requires: { id: 'automatic', level: 2 }, globalBonus: 0.2 },
+  { id: 'precision', name: 'Moagem de precisão', description: '+40% de força no clique', icon: 'pixelarticons:bullseye', baseCost: 3, maxLevel: 3, branch: 'click', requires: { id: 'critical', level: 2 }, clickBonus: 0.4 },
+  { id: 'roastery', name: 'Torra lendária', description: '+15% em toda produção', icon: 'pixelarticons:fire', baseCost: 5, maxLevel: 2, branch: 'click', requires: { id: 'precision', level: 2 }, globalBonus: 0.15 },
+  { id: 'nightshift', name: 'Plantão da madrugada', description: '+40% de produção por segundo', icon: 'pixelarticons:moon-star', baseCost: 4, maxLevel: 3, branch: 'auto', requires: { id: 'temporal', level: 2 }, autoBonus: 0.4 },
+  { id: 'network', name: 'Rede de cafeterias', description: '+15% em toda produção', icon: 'pixelarticons:building-community', baseCost: 5, maxLevel: 2, branch: 'auto', requires: { id: 'nightshift', level: 2 }, globalBonus: 0.15 },
+  { id: 'warehouse', name: 'Estoque estratégico', description: '-4% no preço dos upgrades', icon: 'pixelarticons:archive', baseCost: 3, maxLevel: 3, branch: 'utility', requires: { id: 'supplier', level: 2 }, discountBonus: 0.04 },
+  { id: 'pilgrimage', name: 'Peregrinação do grão', description: '+1 CoinFé em cada renascimento', icon: 'pixelarticons:coin', baseCost: 5, maxLevel: 2, branch: 'utility', requires: { id: 'warehouse', level: 2 }, rebirthBonus: 1 },
+  { id: 'legacy', name: 'Legado do Cafezord', description: '+25% em toda produção', icon: 'pixelarticons:crown', baseCost: 7, maxLevel: 2, branch: 'utility', requires: { id: 'pilgrimage', level: 2 }, globalBonus: 0.25 }
 ]
 
 const WORLD_STAGES = [
@@ -107,6 +114,29 @@ const WORLD_STAGES = [
   { name: 'Cafeteria aberta', label: 'EXPEDIENTE', className: 'world-day' },
   { name: 'Hora do cafezinho', label: 'HORA DOURADA', className: 'world-sunset' },
   { name: 'Plantão neon', label: 'MODO NEON', className: 'world-neon' }
+]
+
+const MEMBER_LEVEL_TITLES = [
+  { minLevel: 1, title: 'Cheirador de Coador', rarity: 'comum', className: 'common', effectClass: 'coador' },
+  { minLevel: 3, title: 'Pingado Iniciante', rarity: 'comum', className: 'common', effectClass: 'pingado' },
+  { minLevel: 5, title: 'Guardinha da Garrafa', rarity: 'comum', className: 'common', effectClass: 'garrafa' },
+  { minLevel: 7, title: 'Fiscal do Copinho', rarity: 'incomum', className: 'uncommon', effectClass: 'copinho' },
+  { minLevel: 9, title: 'Moedor de Boletos', rarity: 'incomum', className: 'uncommon', effectClass: 'boletos' },
+  { minLevel: 11, title: 'Espumador de Reuniao', rarity: 'incomum', className: 'uncommon', effectClass: 'espuma' },
+  { minLevel: 14, title: 'Barista de Planilha', rarity: 'raro', className: 'rare', effectClass: 'planilha' },
+  { minLevel: 17, title: 'Xama do Filtro', rarity: 'raro', className: 'rare', effectClass: 'xama' },
+  { minLevel: 20, title: 'Latteiro de Guerra', rarity: 'raro', className: 'rare', effectClass: 'latteiro' },
+  { minLevel: 24, title: 'Capitao Cappuccino', rarity: 'epico', className: 'epic', effectClass: 'capuccino' },
+  { minLevel: 28, title: 'Doutor em Cafeina', rarity: 'epico', className: 'epic', effectClass: 'cafeina' },
+  { minLevel: 32, title: 'Senhor do Bule Nervoso', rarity: 'epico', className: 'epic', effectClass: 'bule' },
+  { minLevel: 37, title: 'Arqueologo do Po Perdido', rarity: 'lendario', className: 'legendary', effectClass: 'arqueologo' },
+  { minLevel: 42, title: 'Oraculo do Pix Torrado', rarity: 'lendario', className: 'legendary', effectClass: 'oraculo' },
+  { minLevel: 48, title: 'Imperador do Expresso', rarity: 'lendario', className: 'legendary', effectClass: 'imperador' },
+  { minLevel: 55, title: 'Entidade do Cafezinho', rarity: 'mitico', className: 'mythic', effectClass: 'entidade' },
+  { minLevel: 63, title: 'Patrono da Garrafa Eterna', rarity: 'mitico', className: 'mythic', effectClass: 'patrono' },
+  { minLevel: 72, title: 'Deus do Pix Cafeinado', rarity: 'mitico', className: 'mythic', effectClass: 'pix' },
+  { minLevel: 84, title: 'Lenda do Coador Supremo', rarity: 'secreto', className: 'secret', effectClass: 'lenda' },
+  { minLevel: 100, title: 'Cafezord Prime do RH', rarity: 'secreto', className: 'secret', effectClass: 'cafezord' }
 ]
 
 const statusOptions = [
@@ -133,8 +163,8 @@ const authError = ref('')
 const currentUser = ref(null)
 const userPhotoFailed = ref(false)
 
-const userPayment = reactive({ name: '', dept: '' })
-const joinForm = reactive({ name: '', dept: '' })
+const userPayment = reactive({ dept: '' })
+const joinForm = reactive({ dept: '' })
 const adminForm = reactive({ ...DEFAULT_SETTINGS })
 const adminUser = ref(null)
 const paymentRequests = ref([])
@@ -153,6 +183,8 @@ const totalBrewed = ref(savedClicker.total)
 const sceneVariant = ref(savedClicker.sceneVariant)
 const coinFes = ref(savedClicker.coinFes)
 const rebirths = ref(savedClicker.rebirths)
+const lifetimeBrewed = ref(savedClicker.lifetimeBrewed)
+const highestGameLevel = ref(savedClicker.highestGameLevel)
 const shopView = ref('upgrades')
 const rebirthConfirming = ref(false)
 const gameStatus = ref('Toque na xícara para preparar')
@@ -186,13 +218,23 @@ const unpaidCount = computed(() => members.value.length - paidMembers.value.leng
 const totalRaised = computed(() => paidMembers.value.length * Number(settings.monthlyFee || 0))
 const goalPercentage = computed(() => members.value.length ? Math.round((paidMembers.value.length / members.value.length) * 100) : 0)
 const isCoffeeMaster = computed(() => adminUser.value?.role === 'MASTER')
-const pendingPaymentRequests = computed(() => {
+const pendingPaymentRequests = computed(() => selectPendingPaymentRequests(paymentRequests.value))
+function selectPendingPaymentRequests(requests) {
+  const activePendingMemberIds = new Set(
+    members.value
+      .filter((member) => member.status === 'PENDING')
+      .map((member) => member.id)
+  )
   const unique = new Map()
-  paymentRequests.value
-    .filter((request) => request.status === 'PENDING')
-    .forEach((request) => unique.set(request.id, request))
+
+  requests
+    .filter((request) => request.status === 'PENDING' && activePendingMemberIds.has(request.memberId))
+    .forEach((request) => {
+      if (!unique.has(request.memberId)) unique.set(request.memberId, request)
+    })
+
   return [...unique.values()]
-})
+}
 const pixPayload = computed(() => buildPixPayload())
 const qrUrl = computed(() => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixPayload.value)}&color=1F120B&bgcolor=FFFDF9`)
 const adminUnlocked = computed(() => Boolean(adminUser.value))
@@ -200,7 +242,7 @@ const signedInWithWrongAccount = computed(() => Boolean(currentUser.value && !ad
 const isSignedIn = computed(() => Boolean(currentUser.value))
 const permanentMultiplier = computed(() => {
   const skillBonus = skillTree.reduce((total, skill) => total + ((skill.globalBonus || 0) * skill.level), 0)
-  return 1 + skillBonus + (rebirths.value * 0.05)
+  return 1 + skillBonus + (rebirths.value * 0.08)
 })
 const clickSkillMultiplier = computed(() => 1 + skillTree.reduce((total, skill) => total + ((skill.clickBonus || 0) * skill.level), 0))
 const autoSkillMultiplier = computed(() => 1 + skillTree.reduce((total, skill) => total + ((skill.autoBonus || 0) * skill.level), 0))
@@ -208,7 +250,7 @@ const upgradeDiscount = computed(() => Math.min(0.35, skillTree.reduce((total, s
 const criticalChance = computed(() => Math.min(0.4, skillTree.reduce((total, skill) => total + ((skill.criticalBonus || 0) * skill.level), 0)))
 const clickPower = computed(() => (1 + clickerUpgrades.reduce((total, upgrade) => total + (upgrade.clickBonus * upgrade.owned), 0)) * clickSkillMultiplier.value * permanentMultiplier.value)
 const autoBrew = computed(() => clickerUpgrades.reduce((total, upgrade) => total + (upgrade.autoBonus * upgrade.owned), 0) * autoSkillMultiplier.value * permanentMultiplier.value)
-const clickerLevel = computed(() => Math.floor(Math.sqrt(totalBrewed.value / 45)) + 1)
+const clickerLevel = computed(() => gameLevelForTotal(totalBrewed.value))
 const levelStart = computed(() => 45 * Math.pow(clickerLevel.value - 1, 2))
 const levelTarget = computed(() => 45 * Math.pow(clickerLevel.value, 2))
 const levelProgress = computed(() => {
@@ -217,9 +259,20 @@ const levelProgress = computed(() => {
 })
 const currentWorld = computed(() => WORLD_STAGES[Math.min(WORLD_STAGES.length - 1, Math.floor((clickerLevel.value - 1) / 3))])
 const worldClass = computed(() => currentWorld.value.className)
+const signedInUserName = computed(() => (
+  currentUser.value?.displayName?.trim() || currentUser.value?.email?.split('@')[0] || ''
+))
+const currentMember = computed(() => findCurrentMember())
+const currentUserAlreadyJoined = computed(() => Boolean(currentMember.value))
+const currentMemberLevel = computed(() => calculateMemberLevel(currentMember.value))
+const currentMemberTitle = computed(() => memberLevelTitle(currentMemberLevel.value))
+const currentMemberPaymentCount = computed(() => memberPaymentCount(currentMember.value))
 const ownedUpgradeCount = computed(() => clickerUpgrades.reduce((total, upgrade) => total + upgrade.owned, 0))
 const canRebirth = computed(() => clickerLevel.value >= REBIRTH_LEVEL)
-const rebirthReward = computed(() => canRebirth.value ? Math.max(1, Math.floor(Math.sqrt(totalBrewed.value / REBIRTH_THRESHOLD))) : 0)
+const rebirthSkillBonus = computed(() => skillTree.reduce((total, skill) => total + ((skill.rebirthBonus || 0) * skill.level), 0))
+const rebirthReward = computed(() => canRebirth.value
+  ? 2 + rebirths.value + Math.floor((clickerLevel.value - REBIRTH_LEVEL) / 3) + rebirthSkillBonus.value
+  : 0)
 const rebirthProgress = computed(() => Math.min(100, (totalBrewed.value / REBIRTH_THRESHOLD) * 100))
 const filteredMembers = computed(() => {
   const search = searchMember.value.trim().toLowerCase()
@@ -254,7 +307,7 @@ onMounted(async () => {
       unwatchPaymentRequests = watchPaymentRequests((requests) => {
         const previousPending = pendingPaymentRequests.value.length
         paymentRequests.value = requests
-        const nextPending = requests.filter((request) => request.status === 'PENDING').length
+        const nextPending = selectPendingPaymentRequests(requests).length
         if (paymentRequestsReady && nextPending > previousPending) {
           showToast('Notificação da brigada: tem Pix novo pedindo carimbo.', 'info')
           playMailSound()
@@ -338,13 +391,15 @@ function pickLoginSatirePhrase() {
 }
 
 function createEmptyClickerSave() {
-  return { coins: 0, total: 0, sceneVariant: 0, coinFes: 0, rebirths: 0, upgrades: {}, skills: {} }
+  return { coins: 0, total: 0, lifetimeBrewed: 0, highestGameLevel: 1, sceneVariant: 0, coinFes: 0, rebirths: 0, upgrades: {}, skills: {} }
 }
 
 function summarizeClickerSave(save) {
   return {
     coins: Math.floor(Number(save.coins) || 0),
     total: Math.floor(Number(save.total) || 0),
+    lifetimeBrewed: Math.floor(Number(save.lifetimeBrewed) || 0),
+    highestGameLevel: Math.floor(Number(save.highestGameLevel) || 1),
     sceneVariant: Number(save.sceneVariant) || 0,
     coinFes: Number(save.coinFes) || 0,
     rebirths: Number(save.rebirths) || 0,
@@ -406,6 +461,8 @@ function buildClickerSavePayload(userId) {
     uid: userId,
     coins: coffeeCoins.value,
     total: totalBrewed.value,
+    lifetimeBrewed: lifetimeBrewed.value,
+    highestGameLevel: highestGameLevel.value,
     sceneVariant: sceneVariant.value,
     coinFes: coinFes.value,
     rebirths: rebirths.value,
@@ -416,12 +473,17 @@ function buildClickerSavePayload(userId) {
 }
 
 function normalizeClickerSave(saved = {}) {
+  const total = Math.max(0, Number(saved.total) || 0)
+  const rebirthCount = Math.max(0, Number(saved.rebirths) || 0)
+  const inferredHighestLevel = rebirthCount > 0 ? REBIRTH_LEVEL : gameLevelForTotal(total)
   return {
     coins: Math.max(0, Number(saved.coins) || 0),
-    total: Math.max(0, Number(saved.total) || 0),
+    total,
+    lifetimeBrewed: Math.max(total, Number(saved.lifetimeBrewed) || 0),
+    highestGameLevel: Math.max(inferredHighestLevel, Number(saved.highestGameLevel) || 1),
     sceneVariant: Math.max(0, Number(saved.sceneVariant) || 0),
     coinFes: Math.max(0, Number(saved.coinFes) || 0),
-    rebirths: Math.max(0, Number(saved.rebirths) || 0),
+    rebirths: rebirthCount,
     upgrades: saved.upgrades || {},
     skills: saved.skills || {}
   }
@@ -430,6 +492,8 @@ function normalizeClickerSave(saved = {}) {
 function applyClickerSave(saved) {
   coffeeCoins.value = saved.coins
   totalBrewed.value = saved.total
+  lifetimeBrewed.value = saved.lifetimeBrewed
+  highestGameLevel.value = saved.highestGameLevel
   sceneVariant.value = saved.sceneVariant
   coinFes.value = saved.coinFes
   rebirths.value = saved.rebirths
@@ -548,10 +612,16 @@ function formatGameNumber(value) {
   return amount.toLocaleString('pt-BR')
 }
 
+function gameLevelForTotal(total) {
+  return Math.floor(Math.sqrt(Math.max(0, Number(total) || 0) / 45)) + 1
+}
+
 function addCoffee(amount, announceLevel = true) {
   const previousLevel = clickerLevel.value
   coffeeCoins.value += amount
   totalBrewed.value += amount
+  lifetimeBrewed.value += amount
+  highestGameLevel.value = Math.max(highestGameLevel.value, clickerLevel.value)
   const leveledUp = clickerLevel.value > previousLevel
 
   if (leveledUp) {
@@ -647,7 +717,7 @@ function requestRebirth() {
 
   if (!rebirthConfirming.value) {
     rebirthConfirming.value = true
-    gameStatus.value = 'Confirme o renascimento: cafés e upgrades serão reiniciados'
+    gameStatus.value = 'Confirme: só o nível do game, cafés e upgrades serão reiniciados; seu perfil permanece'
     playOpenSound()
     window.setTimeout(() => { rebirthConfirming.value = false }, 5000)
     return
@@ -662,9 +732,54 @@ function requestRebirth() {
   rebirthConfirming.value = false
   sceneVariant.value += 1
   shopView.value = 'skills'
-  gameStatus.value = `Renascimento ${rebirths.value} concluído! +${reward} CoinFé${reward > 1 ? 's' : ''}`
+  gameStatus.value = `Renascimento ${rebirths.value} concluído! Perfil preservado e +${reward} CoinFé${reward > 1 ? 's' : ''}`
   saveClickerProgress()
   playPowerUpSound()
+}
+
+function findCurrentMember() {
+  if (!currentUser.value) return null
+  const email = currentUser.value.email?.toLowerCase() || ''
+  const displayName = currentUser.value.displayName?.trim().toLowerCase() || ''
+  return members.value.find((member) => (
+    member.createdByUid === currentUser.value.uid ||
+    member.createdByEmail?.toLowerCase() === email ||
+    (!member.createdByUid && !member.createdByEmail && displayName && member.name?.trim().toLowerCase() === displayName)
+  )) || null
+}
+
+function memberPaymentCount(member) {
+  if (!member) return 0
+  const confirmed = Number(member.paymentCount || 0)
+  if (confirmed > 0) return confirmed
+  return member.status === 'PAID' ? 1 : 0
+}
+
+function calculateMemberLevel(member) {
+  // O perfil representa a carreira permanente. A mensalidade é a fonte principal;
+  // o game contribui apenas com renascimentos e marcos do melhor nível já alcançado.
+  const paymentScore = memberPaymentCount(member) * 5
+  const rebirthScore = rebirths.value
+  const gameMilestoneScore = Math.floor(highestGameLevel.value / 10)
+  return Math.max(1, paymentScore + rebirthScore + gameMilestoneScore + 1)
+}
+
+function memberLevelTitle(level) {
+  return [...MEMBER_LEVEL_TITLES].reverse().find((item) => level >= item.minLevel) || MEMBER_LEVEL_TITLES[0]
+}
+
+function nextMemberLevelTitle(level) {
+  return MEMBER_LEVEL_TITLES.find((item) => item.minLevel > level) || null
+}
+
+function approveMemberLevelPayment(member, existingMember = null) {
+  const amount = Number(settings.monthlyFee || 0)
+  const referenceMonth = String(settings.month || '').trim()
+  const alreadyCountedThisMonth = Boolean(referenceMonth && existingMember?.lastProfilePaymentMonth === referenceMonth)
+  member.paymentCount = Number(existingMember?.paymentCount || member.paymentCount || 0) + (alreadyCountedThisMonth ? 0 : 1)
+  member.totalContributed = Number(existingMember?.totalContributed || member.totalContributed || 0) + (alreadyCountedThisMonth ? 0 : amount)
+  member.lastProfilePaymentMonth = referenceMonth || null
+  member.lastApprovedPaymentAt = new Date().toISOString()
 }
 
 function currentActor() {
@@ -722,6 +837,12 @@ function switchTab(tabId) {
 }
 
 function openJoinModal() {
+  if (currentUserAlreadyJoined.value) {
+    showToast('Você já participa da lista deste mês.', 'info')
+    playBumpSound()
+    return
+  }
+  joinForm.dept = ''
   joinModalOpen.value = true
   playOpenSound()
 }
@@ -823,11 +944,11 @@ async function requestPaymentApproval(member) {
 
 async function handleUserPayment() {
   if (!requireSignedIn()) return
-  const name = userPayment.name.trim()
+  const name = signedInUserName.value
   const dept = userPayment.dept.trim() || 'Geral'
   if (!name) return
 
-  let member = members.value.find((item) => item.name.toLowerCase() === name.toLowerCase())
+  let member = currentMember.value
   const existingMember = member ? { ...member } : null
   if (member) {
     if (member.status === 'PAID') {
@@ -844,7 +965,7 @@ async function handleUserPayment() {
     member.paidAt = null
     if (dept !== 'Geral') member.dept = dept
   } else {
-    member = { id: Date.now().toString(), name, dept, status: 'PENDING', paidAt: null }
+    member = { id: currentUser.value.uid, name, dept, status: 'PENDING', paidAt: null }
     members.value.push(member)
   }
 
@@ -852,7 +973,6 @@ async function handleUserPayment() {
   await requestPaymentApproval(member)
   showToast(`Pedido enviado para a brigada do café. Agora é perícia do Pix!`, 'success')
   playMailSound()
-  userPayment.name = ''
   userPayment.dept = ''
 }
 
@@ -860,6 +980,11 @@ async function markAsPaidFromList(id) {
   if (!requireSignedIn()) return
   const member = members.value.find((item) => item.id === id)
   if (!member) return
+  if (!isCurrentUserMember(member)) {
+    showToast('Você só pode enviar o seu próprio pagamento para conferência.', 'error')
+    playErrorSound()
+    return
+  }
   const existingMember = { ...member }
   if (member.status === 'PENDING') {
     showToast(`${member.name} já está aguardando carimbo da brigada.`, 'info')
@@ -877,6 +1002,12 @@ async function markAsPaidFromList(id) {
 async function removeMember(id) {
   if (!requireSignedIn()) return
   const member = members.value.find((item) => item.id === id)
+  if (!canRemoveMember(member)) {
+    showToast(removeMemberBlockedReason(member), 'error')
+    playErrorSound()
+    return
+  }
+  if (adminUnlocked.value) await closePendingPaymentRequestsForMember(member)
   members.value = members.value.filter((item) => item.id !== id)
   saveLocalState()
   await auditAction('MEMBER_REMOVED', {
@@ -887,6 +1018,27 @@ async function removeMember(id) {
   await deleteFirestoreMember(id)
   if (member) showToast(`Colega ${member.name} saiu da vaquinha deste mês.`, 'info')
   playRemoveSound()
+}
+
+async function closePendingPaymentRequestsForMember(member) {
+  if (!member) return
+  const pendingRequests = paymentRequests.value.filter((request) => (
+    request.memberId === member.id && request.status === 'PENDING'
+  ))
+  if (!pendingRequests.length) return
+
+  const reviewedAt = new Date().toISOString()
+  const reviewedBy = adminUser.value?.email || 'Brigada do Café'
+  await Promise.all(pendingRequests.map((request) => updatePaymentRequest(request.id, {
+    ...request,
+    status: 'REJECTED',
+    reviewedAt,
+    reviewedBy
+  })))
+  const closedIds = new Set(pendingRequests.map((request) => request.id))
+  paymentRequests.value = paymentRequests.value.map((request) => (
+    closedIds.has(request.id) ? { ...request, status: 'REJECTED', reviewedAt, reviewedBy } : request
+  ))
 }
 
 function searchAndShowReceipt() {
@@ -1008,6 +1160,26 @@ function memberAvatarClass(status) {
   return 'bg-chili/20 text-chili'
 }
 
+function isMemberOwner(member) {
+  return Boolean(currentUser.value?.uid && member?.createdByUid === currentUser.value.uid)
+}
+
+function isCurrentUserMember(member) {
+  return Boolean(member?.id && currentMember.value?.id === member.id)
+}
+
+function canRemoveMember(member) {
+  if (!member || !isSignedIn.value) return false
+  if (isCoffeeMaster.value) return true
+  return isMemberOwner(member) && member.status !== 'PAID'
+}
+
+function removeMemberBlockedReason(member) {
+  if (!isSignedIn.value) return 'Entre com Google para sair da vaquinha'
+  if (member?.status === 'PAID' && isMemberOwner(member)) return 'Pagamento confirmado: saida liberada apenas no proximo mes'
+  return 'Apenas quem entrou na lista ou o Mestre do Cafe pode remover'
+}
+
 async function refreshPaymentRequests() {
   paymentRequests.value = await loadPaymentRequests()
   showToast('Fila de Pix auditada novamente. O coador foi sacudido.', 'info')
@@ -1029,6 +1201,7 @@ async function approvePaymentRequest(request) {
   member.dept = request.dept || 'Geral'
   member.status = 'PAID'
   member.paidAt = nowFormatted()
+  approveMemberLevelPayment(member, existingMember)
   if (wasNewMember) members.value.push(member)
 
   await persistMember(member, existingMember ? { ...existingMember } : null)
@@ -1117,15 +1290,15 @@ async function addMemberFromAdmin() {
 
 async function handleJoinSubmit() {
   if (!requireSignedIn()) return
-  const name = joinForm.name.trim()
+  const name = signedInUserName.value
   if (!name) return
-  if (members.value.some((member) => member.name.toLowerCase() === name.toLowerCase())) {
-    showToast('Você já está na vaquinha deste mês!', 'info')
+  if (currentUserAlreadyJoined.value) {
+    showToast('Você já participa da vaquinha deste mês!', 'info')
     joinModalOpen.value = false
     playBumpSound()
     return
   }
-  const member = { id: Date.now().toString(), name, dept: joinForm.dept.trim() || 'Geral', status: 'UNPAID', paidAt: null }
+  const member = { id: currentUser.value.uid, name, dept: joinForm.dept.trim() || 'Geral', status: 'UNPAID', paidAt: null }
   members.value.push(member)
   await persistMember(member)
   await auditAction('MEMBER_JOINED', {
@@ -1133,7 +1306,6 @@ async function handleJoinSubmit() {
     memberName: member.name,
     memberDept: member.dept
   })
-  joinForm.name = ''
   joinForm.dept = ''
   joinModalOpen.value = false
   showToast('Entrada confirmada. Agora só falta pagar o café!', 'success')
@@ -1142,7 +1314,22 @@ async function handleJoinSubmit() {
 
 async function resetMonthlyPayments() {
   if (!requireAdmin()) return
-  members.value = members.value.map((member) => withMemberAudit({ ...member, status: 'UNPAID', paidAt: null }, member))
+  members.value = members.value.map((member) => {
+    const migratedPaymentCount = member.status === 'PAID' && Number(member.paymentCount || 0) === 0
+      ? 1
+      : Number(member.paymentCount || 0)
+    const migratedContribution = member.status === 'PAID' && Number(member.totalContributed || 0) === 0
+      ? Number(settings.monthlyFee || 0)
+      : Number(member.totalContributed || 0)
+    return withMemberAudit({
+      ...member,
+      status: 'UNPAID',
+      paidAt: null,
+      paymentCount: migratedPaymentCount,
+      totalContributed: migratedContribution,
+      lastProfilePaymentMonth: member.lastProfilePaymentMonth || (member.status === 'PAID' ? settings.month : null)
+    }, member)
+  })
   saveLocalState()
   await saveMembers(members.value)
   await auditAction('MONTHLY_PAYMENTS_RESET', { memberCount: members.value.length })
@@ -1272,7 +1459,7 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
           </div>
           <div class="world-chip">
             <span class="world-live-dot"></span>
-            {{ currentWorld.label }} · NÍVEL {{ clickerLevel }}
+            {{ currentWorld.label }} · GAME NV. {{ clickerLevel }}
           </div>
         </div>
       </header>
@@ -1356,8 +1543,9 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
             </div>
           </div>
 
-          <div class="user-account-badge" :class="{ 'is-master': isCoffeeMaster }">
-            <div class="user-avatar" :class="{ 'is-master': isCoffeeMaster }">
+          <div class="user-account-badge" :class="[{ 'is-master': isCoffeeMaster }, `rank-${currentMemberTitle.effectClass}`]">
+            <span class="profile-external-border" aria-hidden="true"></span>
+            <div class="user-avatar" :class="[{ 'is-master': isCoffeeMaster }, `rank-${currentMemberTitle.effectClass}`]">
               <img
                 v-if="currentUser.photoURL && !userPhotoFailed"
                 :src="currentUser.photoURL"
@@ -1373,7 +1561,22 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
                 <Icon :icon="isCoffeeMaster ? 'pixelarticons:crown' : 'pixelarticons:coffee'" />
                 {{ isCoffeeMaster ? 'MESTRE DO CAFÉ' : 'MEMBRO CAFEINADO' }}
               </span>
-              <strong>{{ currentUser.displayName || currentUser.email }}</strong>
+              <div class="user-account-name">
+                <strong>{{ currentUser.displayName || currentUser.email }}</strong>
+                <span
+                  class="account-level-inline"
+                  :class="`rank-${currentMemberTitle.effectClass}`"
+                  :title="`Nível de perfil permanente: ${currentMemberPaymentCount} mensalidade(s) × 5, ${rebirths} renascimento(s) × 1 e marcos do melhor nível do game`"
+                >PERFIL LV {{ currentMemberLevel }}</span>
+                <span
+                  class="account-title-hover"
+                  :class="[`is-${currentMemberTitle.className}`, `rank-${currentMemberTitle.effectClass}`]"
+                  :data-tooltip="`${currentMemberTitle.title} | Raridade: ${currentMemberTitle.rarity}`"
+                  :aria-label="`${currentMemberTitle.title} | Raridade: ${currentMemberTitle.rarity}`"
+                >
+                  <span class="account-title-text">{{ currentMemberTitle.title }}</span>
+                </span>
+              </div>
               <div class="account-quick-actions">
                 <button v-if="adminUnlocked" type="button" class="account-admin-link" @click="switchTab('admin')">
                   <Icon icon="pixelarticons:shield" /> PAINEL DO CAFÉ
@@ -1388,11 +1591,11 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
                 >
                   <Icon icon="pixelarticons:gamepad" />
                 </button>
+                <button type="button" class="account-logout" title="Sair da conta" aria-label="Sair da conta" @click="lockAdmin">
+                  <Icon icon="pixelarticons:logout" />
+                </button>
               </div>
             </div>
-            <button type="button" class="account-logout" title="Sair da conta" aria-label="Sair da conta" @click="lockAdmin">
-              <Icon icon="pixelarticons:logout" />
-            </button>
           </div>
         </div>
 
@@ -1446,7 +1649,7 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
           </div>
           <div class="signed-game-actions">
             <span class="coinfe-chip"><Icon icon="pixelarticons:coin" /><strong>{{ formatGameNumber(coinFes) }}</strong><span>COINFÉS</span></span>
-            <span class="world-chip"><span class="world-live-dot"></span>{{ currentWorld.label }} · NÍVEL {{ clickerLevel }}</span>
+            <span class="world-chip"><span class="world-live-dot"></span>{{ currentWorld.label }} · GAME NV. {{ clickerLevel }}</span>
             <button type="button" class="manual-save-button" :disabled="manualClickerSaveLoading" @click="saveClickerProgressManually">
               <Icon :icon="manualClickerSaveLoading ? 'pixelarticons:loader' : 'pixelarticons:save'" /> {{ manualClickerSaveLoading ? 'SALVANDO' : 'SALVAR' }}
             </button>
@@ -1534,14 +1737,14 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
               </div>
               <h2 class="text-2xl sm:text-3xl font-black text-espresso mb-2">Já fez a transferência?</h2>
               <p class="text-sm text-mocha font-medium mb-6">
-                Digite seu nome abaixo para registrar o pagamento na lista da firma e liberar sua <strong>Licença de Cafeína MENSAL</strong>!
+                Seu nome é identificado pelo login Google. Informe apenas o setor para registrar o pagamento e liberar sua <strong>Licença de Cafeína MENSAL</strong>!
               </p>
               <form @submit.prevent="handleUserPayment" class="space-y-4">
                 <div>
-                  <label class="block text-xs font-bold text-espresso uppercase mb-1">Seu Nome / Apelido da Firma *</label>
+                  <label class="block text-xs font-bold text-espresso uppercase mb-1">Seu Nome (Login Google)</label>
                   <div class="relative">
                     <span class="absolute left-3 top-3 text-mocha/60"><Icon icon="pixelarticons:user" class="text-lg" /></span>
-                    <input v-model="userPayment.name" type="text" required placeholder="Ex: Carlinhos do T.I. / Ana do Vendas" class="w-full bg-foam text-espresso font-bold pl-10 pr-4 py-3 rounded-xl comic-border focus:ring-4 focus:ring-caramel/30 focus:outline-none transition-all placeholder:font-normal placeholder:text-mocha/40">
+                    <input :value="signedInUserName" type="text" disabled class="w-full bg-latte/50 text-mocha font-bold pl-10 pr-4 py-3 rounded-xl comic-border cursor-not-allowed opacity-80">
                   </div>
                 </div>
                 <div>
@@ -1601,8 +1804,8 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
                 <Icon icon="pixelarticons:search" class="absolute left-2.5 top-2.5 text-sm text-mocha/50" />
               </div>
               <CafeSelect v-model="filterStatus" :options="statusOptions" class="sm:w-56" />
-              <CafeButton variant="caramel" size="sm" icon="pixelarticons:plus" @click="openJoinModal">
-                Entrar Este Mês
+              <CafeButton variant="caramel" size="sm" icon="pixelarticons:plus" :disabled="currentUserAlreadyJoined" @click="openJoinModal">
+                {{ currentUserAlreadyJoined ? 'Você já participa' : 'Entrar Este Mês' }}
               </CafeButton>
             </div>
           </div>
@@ -1635,8 +1838,9 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
                     <div class="flex items-center justify-end gap-1">
                       <button v-if="member.status === 'PAID'" @click="viewUserReceipt(member.name)" title="Ver Segunda Via" class="bg-caramel hover:bg-amber-600 text-espresso text-xs font-bold p-1.5 px-2.5 rounded-lg comic-border shadow-comic inline-flex items-center gap-1"><Icon icon="pixelarticons:receipt" /> Recibo</button>
                       <span v-else-if="member.status === 'PENDING'" class="bg-caramel/20 text-caramel text-xs font-black p-1.5 px-2.5 rounded-lg comic-border inline-flex items-center gap-1"><Icon icon="pixelarticons:hourglass" /> Em análise</span>
-                      <button v-else @click="markAsPaidFromList(member.id)" title="Enviar para conferência" class="bg-mint hover:bg-emerald-600 text-foam text-xs font-bold p-1.5 px-2.5 rounded-lg comic-border shadow-comic inline-flex items-center gap-1"><Icon icon="pixelarticons:check" /> Já paguei</button>
-                      <button @click="removeMember(member.id)" title="Sair da vaquinha neste mês" class="bg-roast hover:bg-espresso text-latte text-xs font-bold p-1.5 px-2 rounded-lg comic-border shadow-comic"><Icon icon="pixelarticons:user-minus" /></button>
+                      <button v-else-if="isCurrentUserMember(member)" @click="markAsPaidFromList(member.id)" title="Enviar meu pagamento para conferência" class="bg-mint hover:bg-emerald-600 text-foam text-xs font-bold p-1.5 px-2.5 rounded-lg comic-border shadow-comic inline-flex items-center gap-1"><Icon icon="pixelarticons:check" /> Já paguei</button>
+                      <button v-if="canRemoveMember(member)" @click="removeMember(member.id)" title="Sair da vaquinha neste mês" class="bg-roast hover:bg-espresso text-latte text-xs font-bold p-1.5 px-2 rounded-lg comic-border shadow-comic"><Icon icon="pixelarticons:user-minus" /></button>
+                      <button v-else type="button" disabled :title="removeMemberBlockedReason(member)" class="bg-mocha/20 text-mocha/60 text-xs font-bold p-1.5 px-2 rounded-lg comic-border cursor-not-allowed"><Icon icon="pixelarticons:lock" /></button>
                     </div>
                   </td>
                 </tr>
@@ -1774,6 +1978,40 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
             </div>
           </div>
 
+          <div v-if="isCoffeeMaster" class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b-2 border-espresso/20 pb-3">
+              <div>
+                <h3 class="text-lg font-black text-espresso flex items-center gap-2"><Icon icon="pixelarticons:star" class="text-caramel text-2xl" /> Menu de Badges dos Levels</h3>
+                <p class="text-xs text-mocha font-medium">Previa dos titulos, raridades e efeitos usados no perfil dos integrantes.</p>
+              </div>
+              <span class="bg-roast text-caramel text-[10px] font-black px-3 py-1 rounded-full comic-border uppercase font-mono">Mestre</span>
+            </div>
+
+            <div class="level-preview-grid">
+              <div
+                v-for="title in MEMBER_LEVEL_TITLES"
+                :key="`${title.minLevel}-${title.title}`"
+                class="level-preview-item comic-border"
+                :class="`rank-${title.effectClass}`"
+              >
+                <span class="profile-external-border" aria-hidden="true"></span>
+                <span class="level-preview-level" :class="`rank-${title.effectClass}`">LV {{ title.minLevel }}+</span>
+                <span
+                  class="user-avatar level-preview-avatar"
+                  :class="`rank-${title.effectClass}`"
+                  :title="`Prévia da borda: ${title.title}`"
+                  aria-hidden="true"
+                >
+                  <Icon icon="pixelarticons:user" />
+                </span>
+                <span class="level-preview-badge" :class="[`is-${title.className}`, `rank-${title.effectClass}`]">
+                  <span>{{ title.title }}</span>
+                </span>
+                <span class="level-preview-rarity">{{ title.rarity }}</span>
+              </div>
+            </div>
+          </div>
+
           <div class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl">
             <div class="mb-5">
               <h3 class="text-lg font-black text-espresso flex items-center gap-2"><Icon icon="pixelarticons:users" class="text-caramel text-2xl" /> Mestres Autorizados</h3>
@@ -1800,7 +2038,7 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
         <h3 class="text-2xl font-black text-espresso flex items-center gap-2">Entrar na Vaquinha <Icon icon="pixelarticons:coffee" class="text-caramel" /></h3>
         <p class="text-xs text-mocha font-medium">Você pode entrar e sair nos meses que quiser sem ressentimentos!</p>
         <form @submit.prevent="handleJoinSubmit" class="space-y-3 pt-2">
-          <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Seu Nome *</label><input v-model="joinForm.name" type="text" required placeholder="Ex: Roberto do Almoxarifado" class="w-full bg-foam text-espresso font-bold p-3 rounded-xl comic-border focus:outline-none"></div>
+          <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Seu Nome (Login Google)</label><input :value="signedInUserName" type="text" disabled class="w-full bg-latte/50 text-mocha font-bold p-3 rounded-xl comic-border cursor-not-allowed opacity-80"></div>
           <div><label class="block text-xs font-bold text-espresso uppercase mb-1">Seu Setor</label><input v-model="joinForm.dept" type="text" placeholder="Ex: Compras" class="w-full bg-foam text-espresso font-bold p-3 rounded-xl comic-border focus:outline-none"></div>
           <CafeButton type="submit" variant="mint" size="md" block icon="pixelarticons:user-plus">CONFIRMAR MINHA ENTRADA</CafeButton>
         </form>
