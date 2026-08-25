@@ -222,12 +222,10 @@ export async function saveSettings(settings) {
   await setDoc(doc(db, 'passcafe', 'settings'), settings, { merge: true })
 }
 
-export async function loadMembers(defaultMembers) {
-  if (!db) return defaultMembers
+export async function loadMembers() {
+  if (!db) return []
   const snapshot = await getDocs(query(collection(db, 'passcafeMembers'), orderBy('name')))
-  if (snapshot.empty) {
-    return defaultMembers
-  }
+  if (snapshot.empty) return []
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
 }
 

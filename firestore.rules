@@ -221,7 +221,7 @@ service cloud.firestore {
     function isValidClickerSave(userId) {
       return request.auth != null
         && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['uid', 'coins', 'total', 'lifetimeBrewed', 'highestGameLevel', 'sceneVariant', 'coinFes', 'rebirths', 'upgrades', 'skills', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'coins', 'total', 'lifetimeBrewed', 'highestGameLevel', 'sceneVariant', 'coinFes', 'coinFesEarned', 'rebirths', 'manualClicks', 'criticalClicks', 'upgrades', 'skills', 'achievements', 'achievementUnlockedAt', 'updatedAt'])
         && request.resource.data.uid == userId
         && request.resource.data.coins is number
         && request.resource.data.coins >= 0
@@ -235,8 +235,15 @@ service cloud.firestore {
         && request.resource.data.sceneVariant >= 0
         && request.resource.data.coinFes is number
         && request.resource.data.coinFes >= 0
+        && request.resource.data.coinFesEarned is number
+        && request.resource.data.coinFesEarned >= request.resource.data.coinFes
         && request.resource.data.rebirths is number
         && request.resource.data.rebirths >= 0
+        && request.resource.data.manualClicks is number
+        && request.resource.data.manualClicks >= 0
+        && request.resource.data.criticalClicks is number
+        && request.resource.data.criticalClicks >= 0
+        && request.resource.data.criticalClicks <= request.resource.data.manualClicks
         && request.resource.data.upgrades is map
         && request.resource.data.upgrades.keys().hasOnly(['grinder', 'barista', 'double', 'machine', 'thermal', 'delivery', 'legendary', 'franchise'])
         && isOptionalNonNegativeNumber(request.resource.data.upgrades.grinder)
@@ -262,6 +269,10 @@ service cloud.firestore {
         && isOptionalNonNegativeNumber(request.resource.data.skills.warehouse)
         && isOptionalNonNegativeNumber(request.resource.data.skills.pilgrimage)
         && isOptionalNonNegativeNumber(request.resource.data.skills.legacy)
+        && request.resource.data.achievements is list
+        && request.resource.data.achievements.size() <= 50
+        && request.resource.data.achievementUnlockedAt is map
+        && request.resource.data.achievementUnlockedAt.size() <= 50
         && request.resource.data.updatedAt is string;
     }
 

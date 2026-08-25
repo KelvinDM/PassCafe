@@ -676,19 +676,10 @@
       pixOwner: "Sr. Cafeeiro do RH"
     };
 
-    // Integrantes Iniciais
-    const DEFAULT_MEMBERS = [
-      { id: "1", name: "Carlinhos do T.I.", dept: "Tecnologia", status: "PAID", paidAt: "14/08/2026 09:15" },
-      { id: "2", name: "Dona Maria do RH", dept: "Recursos Humanos", status: "PAID", paidAt: "14/08/2026 10:30" },
-      { id: "3", name: "Lucão do Marketing", dept: "Marketing", status: "UNPAID", paidAt: null },
-      { id: "4", name: "Vanessa do Financeiro", dept: "Financeiro", status: "PAID", paidAt: "13/08/2026 16:45" },
-      { id: "5", name: "Pedrinho Estagiário", dept: "Suporte", status: "UNPAID", paidAt: null }
-    ];
-
     // Carregar do localStorage se existir
     let state = {
       settings: JSON.parse(localStorage.getItem('cafe_settings')) || DEFAULT_SETTINGS,
-      members: JSON.parse(localStorage.getItem('cafe_members')) || DEFAULT_MEMBERS,
+      members: JSON.parse(localStorage.getItem('cafe_members')) || [],
       adminUnlocked: false
     };
 

@@ -7,6 +7,8 @@ import CafeClickerGame from './components/CafeClickerGame.vue'
 import CafeSelect from './components/CafeSelect.vue'
 import FeatureIcon from './components/FeatureIcon.vue'
 import StatTile from './components/StatTile.vue'
+import AchievementGallery from './components/AchievementGallery.vue'
+import { ACHIEVEMENT_CATALOG } from './data/achievements'
 import {
   acceptAdminInvite,
   changeAdminRole as changeRemoteAdminRole,
@@ -46,14 +48,6 @@ const DEFAULT_SETTINGS = {
   pixOwner: 'Sr. Cafeeiro do RH'
 }
 
-const DEFAULT_MEMBERS = [
-  { id: '1', name: 'Carlinhos do T.I.', dept: 'Tecnologia', status: 'PAID', paidAt: '14/08/2026 09:15' },
-  { id: '2', name: 'Dona Maria do RH', dept: 'Recursos Humanos', status: 'PAID', paidAt: '14/08/2026 10:30' },
-  { id: '3', name: 'Lucão do Marketing', dept: 'Marketing', status: 'UNPAID', paidAt: null },
-  { id: '4', name: 'Vanessa do Financeiro', dept: 'Financeiro', status: 'PAID', paidAt: '13/08/2026 16:45' },
-  { id: '5', name: 'Pedrinho Estagiário', dept: 'Suporte', status: 'UNPAID', paidAt: null }
-]
-
 const FUNNY_EXCUSES = [
   '"Achei que o café era patrocinado pela diretoria este mês..."',
   '"Esqueci a chave de segurança do banco no meu outro casaco."',
@@ -84,6 +78,7 @@ const LOGIN_SATIRE_PHRASES = [
 const REBIRTH_LEVEL = 10
 const CLICKER_AUTO_SAVE_INTERVAL = 30 * 60 * 1000
 const REBIRTH_THRESHOLD = 45 * Math.pow(REBIRTH_LEVEL - 1, 2)
+const ACHIEVEMENT_IDS = new Set(ACHIEVEMENT_CATALOG.map((achievement) => achievement.id))
 const CLICKER_UPGRADE_CATALOG = [
   { id: 'grinder', name: 'Moedor turbo', description: '+1 por clique', icon: 'pixelarticons:speed-fast', baseCost: 25, clickBonus: 1, autoBonus: 0 },
   { id: 'barista', name: 'Barista bot', description: '+1 café por segundo', icon: 'pixelarticons:android', baseCost: 80, clickBonus: 0, autoBonus: 1 },
@@ -162,7 +157,7 @@ const adminRoleOptions = [
 ]
 
 const settings = reactive({ ...DEFAULT_SETTINGS })
-const members = ref([...DEFAULT_MEMBERS])
+const members = ref([])
 const activeTab = ref('pay')
 const loading = ref(true)
 const authReady = ref(false)
@@ -201,6 +196,11 @@ const coinFes = ref(savedClicker.coinFes)
 const rebirths = ref(savedClicker.rebirths)
 const lifetimeBrewed = ref(savedClicker.lifetimeBrewed)
 const highestGameLevel = ref(savedClicker.highestGameLevel)
+const manualClicks = ref(savedClicker.manualClicks)
+const criticalClicks = ref(savedClicker.criticalClicks)
+const coinFesEarned = ref(savedClicker.coinFesEarned)
+const unlockedAchievementIds = ref(new Set(savedClicker.achievements))
+const achievementUnlockedAt = ref({ ...savedClicker.achievementUnlockedAt })
 const shopView = ref('upgrades')
 const rebirthConfirming = ref(false)
 const gameStatus = ref('Toque na xícara para preparar')
@@ -286,6 +286,20 @@ const currentMemberLevel = computed(() => calculateMemberLevel(currentMember.val
 const currentMemberTitle = computed(() => memberLevelTitle(currentMemberLevel.value))
 const currentMemberPaymentCount = computed(() => memberPaymentCount(currentMember.value))
 const ownedUpgradeCount = computed(() => clickerUpgrades.reduce((total, upgrade) => total + upgrade.owned, 0))
+const purchasedSkillLevels = computed(() => skillTree.reduce((total, skill) => total + skill.level, 0))
+const allSkillsMaxed = computed(() => skillTree.every((skill) => skill.level >= skill.maxLevel))
+const achievements = computed(() => ACHIEVEMENT_CATALOG.map((achievement) => {
+  const current = achievementCurrentValue(achievement.metric)
+  const unlocked = unlockedAchievementIds.value.has(achievement.id)
+  return {
+    ...achievement,
+    current: unlocked ? Math.max(current, achievement.target) : current,
+    progress: unlocked ? 100 : Math.min(100, Math.max(0, (current / achievement.target) * 100)),
+    unlocked,
+    unlockedAt: achievementUnlockedAt.value[achievement.id] || null
+  }
+}))
+const unlockedAchievementCount = computed(() => unlockedAchievementIds.value.size)
 const canRebirth = computed(() => clickerLevel.value >= REBIRTH_LEVEL)
 const rebirthSkillBonus = computed(() => skillTree.reduce((total, skill) => total + ((skill.rebirthBonus || 0) * skill.level), 0))
 const rebirthReward = computed(() => canRebirth.value
@@ -329,13 +343,13 @@ onMounted(async () => {
   try {
     const [loadedSettings, loadedMembers] = await Promise.all([
       loadSettings(loadLocalSettings()),
-      loadMembers(loadLocalMembers())
+      loadMembers()
     ])
     Object.assign(settings, loadedSettings)
     Object.assign(adminForm, loadedSettings)
     members.value = loadedMembers
   } catch (error) {
-    showToast('Não foi possível carregar o Firestore. Usando dados locais.', 'error')
+    showToast('Não foi possível carregar os dados do Firestore.', 'error')
   } finally {
     loading.value = false
   }
@@ -402,7 +416,22 @@ function pickLoginSatirePhrase() {
 }
 
 function createEmptyClickerSave() {
-  return { coins: 0, total: 0, lifetimeBrewed: 0, highestGameLevel: 1, sceneVariant: 0, coinFes: 0, rebirths: 0, upgrades: {}, skills: {} }
+  return {
+    coins: 0,
+    total: 0,
+    lifetimeBrewed: 0,
+    highestGameLevel: 1,
+    sceneVariant: 0,
+    coinFes: 0,
+    coinFesEarned: 0,
+    rebirths: 0,
+    manualClicks: 0,
+    criticalClicks: 0,
+    upgrades: {},
+    skills: {},
+    achievements: [],
+    achievementUnlockedAt: {}
+  }
 }
 
 function summarizeClickerSave(save) {
@@ -413,9 +442,13 @@ function summarizeClickerSave(save) {
     highestGameLevel: Math.floor(Number(save.highestGameLevel) || 1),
     sceneVariant: Number(save.sceneVariant) || 0,
     coinFes: Number(save.coinFes) || 0,
+    coinFesEarned: Number(save.coinFesEarned) || 0,
     rebirths: Number(save.rebirths) || 0,
+    manualClicks: Number(save.manualClicks) || 0,
+    criticalClicks: Number(save.criticalClicks) || 0,
     upgrades: save.upgrades || {},
-    skills: save.skills || {}
+    skills: save.skills || {},
+    achievements: Array.isArray(save.achievements) ? save.achievements : []
   }
 }
 
@@ -476,9 +509,14 @@ function buildClickerSavePayload(userId) {
     highestGameLevel: highestGameLevel.value,
     sceneVariant: sceneVariant.value,
     coinFes: coinFes.value,
+    coinFesEarned: coinFesEarned.value,
     rebirths: rebirths.value,
+    manualClicks: manualClicks.value,
+    criticalClicks: criticalClicks.value,
     upgrades,
     skills,
+    achievements: [...unlockedAchievementIds.value],
+    achievementUnlockedAt: achievementUnlockedAt.value,
     updatedAt: new Date().toISOString()
   }
 }
@@ -487,6 +525,12 @@ function normalizeClickerSave(saved = {}) {
   const total = Math.max(0, Number(saved.total) || 0)
   const rebirthCount = Math.max(0, Number(saved.rebirths) || 0)
   const inferredHighestLevel = rebirthCount > 0 ? REBIRTH_LEVEL : gameLevelForTotal(total)
+  const savedAchievements = Array.isArray(saved.achievements)
+    ? [...new Set(saved.achievements.filter((id) => ACHIEVEMENT_IDS.has(id)))]
+    : []
+  const savedAchievementDates = saved.achievementUnlockedAt && typeof saved.achievementUnlockedAt === 'object'
+    ? Object.fromEntries(Object.entries(saved.achievementUnlockedAt).filter(([id]) => ACHIEVEMENT_IDS.has(id)))
+    : {}
   return {
     coins: Math.max(0, Number(saved.coins) || 0),
     total,
@@ -494,9 +538,14 @@ function normalizeClickerSave(saved = {}) {
     highestGameLevel: Math.max(inferredHighestLevel, Number(saved.highestGameLevel) || 1),
     sceneVariant: Math.max(0, Number(saved.sceneVariant) || 0),
     coinFes: Math.max(0, Number(saved.coinFes) || 0),
+    coinFesEarned: Math.max(Number(saved.coinFes) || 0, rebirthCount * 2, Number(saved.coinFesEarned) || 0),
     rebirths: rebirthCount,
+    manualClicks: Math.max(0, Number(saved.manualClicks) || 0),
+    criticalClicks: Math.max(0, Number(saved.criticalClicks) || 0),
     upgrades: saved.upgrades || {},
-    skills: saved.skills || {}
+    skills: saved.skills || {},
+    achievements: savedAchievements,
+    achievementUnlockedAt: savedAchievementDates
   }
 }
 
@@ -507,7 +556,12 @@ function applyClickerSave(saved) {
   highestGameLevel.value = saved.highestGameLevel
   sceneVariant.value = saved.sceneVariant
   coinFes.value = saved.coinFes
+  coinFesEarned.value = saved.coinFesEarned
   rebirths.value = saved.rebirths
+  manualClicks.value = saved.manualClicks
+  criticalClicks.value = saved.criticalClicks
+  unlockedAchievementIds.value = new Set(saved.achievements || [])
+  achievementUnlockedAt.value = { ...(saved.achievementUnlockedAt || {}) }
   clickerUpgrades.forEach((upgrade) => { upgrade.owned = Number(saved.upgrades?.[upgrade.id] || 0) })
   skillTree.forEach((skill) => { skill.level = Number(saved.skills?.[skill.id] || 0) })
   clickBursts.value = []
@@ -536,6 +590,7 @@ async function hydrateClickerUser(user) {
       : createEmptyClickerSave()
     const normalizedSave = normalizeClickerSave(loadedSave)
     applyClickerSave(normalizedSave)
+    evaluateAchievements({ announce: false, persist: false })
     clickerSaveFailed = false
     clickerLastLoadAt.value = new Date().toISOString()
     clickerSaveStatus.value = userId ? 'Save carregado da nuvem' : 'Modo sem save'
@@ -627,6 +682,60 @@ function gameLevelForTotal(total) {
   return Math.floor(Math.sqrt(Math.max(0, Number(total) || 0) / 45)) + 1
 }
 
+function achievementCurrentValue(metric) {
+  if (metric.startsWith('upgrade:')) {
+    return Number(findUpgrade(metric.slice('upgrade:'.length))?.owned || 0)
+  }
+
+  const values = {
+    lifetimeBrewed: lifetimeBrewed.value,
+    manualClicks: manualClicks.value,
+    criticalClicks: criticalClicks.value,
+    clickPower: clickPower.value,
+    autoBrew: autoBrew.value,
+    totalUpgrades: ownedUpgradeCount.value,
+    skillLevels: purchasedSkillLevels.value,
+    maxedSkills: allSkillsMaxed.value ? 1 : 0,
+    highestGameLevel: highestGameLevel.value,
+    rebirths: rebirths.value,
+    coinFesEarned: coinFesEarned.value
+  }
+  return Math.max(0, Number(values[metric]) || 0)
+}
+
+function findUpgrade(upgradeId) {
+  return clickerUpgrades.find((upgrade) => upgrade.id === upgradeId)
+}
+
+function evaluateAchievements({ announce = true, persist = true } = {}) {
+  const newlyUnlocked = ACHIEVEMENT_CATALOG.filter((achievement) => (
+    !unlockedAchievementIds.value.has(achievement.id) &&
+    achievementCurrentValue(achievement.metric) >= achievement.target
+  ))
+
+  if (!newlyUnlocked.length) return []
+
+  const unlockedAt = new Date().toISOString()
+  const nextIds = new Set(unlockedAchievementIds.value)
+  const nextDates = { ...achievementUnlockedAt.value }
+  newlyUnlocked.forEach((achievement) => {
+    nextIds.add(achievement.id)
+    nextDates[achievement.id] = unlockedAt
+  })
+  unlockedAchievementIds.value = nextIds
+  achievementUnlockedAt.value = nextDates
+
+  if (announce) {
+    const message = newlyUnlocked.length === 1
+      ? `Conquista desbloqueada: ${newlyUnlocked[0].title}!`
+      : `${newlyUnlocked.length} conquistas desbloqueadas!`
+    showToast(message, 'success')
+    playPowerUpSound()
+  }
+  if (persist) saveClickerProgress()
+  return newlyUnlocked
+}
+
 function addCoffee(amount, announceLevel = true) {
   const previousLevel = clickerLevel.value
   coffeeCoins.value += amount
@@ -641,11 +750,15 @@ function addCoffee(amount, announceLevel = true) {
     if (announceLevel) playPowerUpSound()
   }
 
+  evaluateAchievements()
+
   return leveledUp
 }
 
 function brewCoffee(event) {
   const critical = criticalChance.value > 0 && Math.random() < criticalChance.value
+  manualClicks.value += 1
+  if (critical) criticalClicks.value += 1
   const earned = clickPower.value * (critical ? 5 : 1)
   const leveledUp = addCoffee(earned)
   if (!leveledUp) gameStatus.value = critical
@@ -681,6 +794,7 @@ function buyClickerUpgrade(upgrade) {
   upgrade.owned += 1
   sceneVariant.value += 1
   gameStatus.value = `${upgrade.name} atualizado para o nível ${upgrade.owned}`
+  evaluateAchievements({ persist: false })
   saveClickerProgress()
   playPowerUpSound()
 }
@@ -715,6 +829,7 @@ function buySkill(skill) {
   skill.level += 1
   sceneVariant.value += 1
   gameStatus.value = `${skill.name} desbloqueada no nível ${skill.level}`
+  evaluateAchievements({ persist: false })
   saveClickerProgress()
   playPowerUpSound()
 }
@@ -736,6 +851,7 @@ function requestRebirth() {
 
   const reward = rebirthReward.value
   coinFes.value += reward
+  coinFesEarned.value += reward
   rebirths.value += 1
   coffeeCoins.value = 0
   totalBrewed.value = 0
@@ -744,6 +860,7 @@ function requestRebirth() {
   sceneVariant.value += 1
   shopView.value = 'skills'
   gameStatus.value = `Renascimento ${rebirths.value} concluído! Perfil preservado e +${reward} CoinFé${reward > 1 ? 's' : ''}`
+  evaluateAchievements({ persist: false })
   saveClickerProgress()
   playPowerUpSound()
 }
@@ -838,13 +955,8 @@ function loadLocalSettings() {
   return JSON.parse(localStorage.getItem('cafe_settings') || 'null') || DEFAULT_SETTINGS
 }
 
-function loadLocalMembers() {
-  return JSON.parse(localStorage.getItem('cafe_members') || 'null') || DEFAULT_MEMBERS
-}
-
 function saveLocalState() {
   localStorage.setItem('cafe_settings', JSON.stringify(settings))
-  localStorage.setItem('cafe_members', JSON.stringify(members.value))
 }
 
 function switchTab(tabId) {
@@ -1794,6 +1906,17 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
                 >
                   <Icon icon="pixelarticons:gamepad" />
                 </button>
+                <button
+                  type="button"
+                  class="account-achievements-link"
+                  :class="{ active: activeTab === 'achievements' }"
+                  :title="`Conquistas (${unlockedAchievementCount}/${ACHIEVEMENT_CATALOG.length})`"
+                  aria-label="Abrir conquistas"
+                  @click="switchTab('achievements')"
+                >
+                  <Icon icon="pixelarticons:trophy" />
+                  <span v-if="unlockedAchievementCount" class="achievement-action-count">{{ unlockedAchievementCount }}</span>
+                </button>
                 <button type="button" class="account-logout" title="Sair da conta" aria-label="Sair da conta" @click="lockAdmin">
                   <Icon icon="pixelarticons:logout" />
                 </button>
@@ -1915,6 +2038,12 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
         </div>
         <div class="scene-flash" :key="sceneVariant" aria-hidden="true"></div>
       </section>
+
+      <AchievementGallery
+        v-show="!loading && activeTab === 'achievements'"
+        :achievements="achievements"
+        :unlocked-count="unlockedAchievementCount"
+      />
 
       <section v-show="!loading && activeTab === 'pay'" class="tab-content space-y-6">
         <div class="pay-card bg-crema rounded-3xl p-6 sm:p-8 comic-border-lg shadow-comic-xl grid grid-cols-1 md:grid-cols-12 gap-8 items-start relative overflow-hidden">

@@ -127,7 +127,7 @@ Funcionalidades principais:
 Dados padrao definidos no componente:
 
 - configuracoes do mes, valor da cota e Pix em `DEFAULT_SETTINGS`;
-- participantes iniciais em `DEFAULT_MEMBERS`;
+- a lista de participantes inicia vazia e e carregada exclusivamente do Firestore;
 - frases e banners em `FUNNY_EXCUSES` e `FUNNY_BANNERS`.
 
 <<<<<<< Updated upstream
