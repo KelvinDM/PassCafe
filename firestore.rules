@@ -31,6 +31,10 @@ service cloud.firestore {
       return value == null || value is string;
     }
 
+    function isOptionalNonNegativeNumber(value) {
+      return value == null || (value is number && value >= 0);
+    }
+
     function hasOnlyKeys(keys) {
       return request.resource.data.keys().hasOnly(keys);
     }
@@ -132,6 +136,42 @@ service cloud.firestore {
         && request.resource.data.createdAt is string;
     }
 
+    function isValidClickerSave(userId) {
+      return request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['uid', 'coins', 'total', 'sceneVariant', 'coinFes', 'rebirths', 'upgrades', 'skills', 'updatedAt'])
+        && request.resource.data.uid == userId
+        && request.resource.data.coins is number
+        && request.resource.data.coins >= 0
+        && request.resource.data.total is number
+        && request.resource.data.total >= 0
+        && request.resource.data.sceneVariant is number
+        && request.resource.data.sceneVariant >= 0
+        && request.resource.data.coinFes is number
+        && request.resource.data.coinFes >= 0
+        && request.resource.data.rebirths is number
+        && request.resource.data.rebirths >= 0
+        && request.resource.data.upgrades is map
+        && request.resource.data.upgrades.keys().hasOnly(['grinder', 'barista', 'double', 'machine', 'thermal', 'delivery', 'legendary', 'franchise'])
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.grinder)
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.barista)
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.double)
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.machine)
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.thermal)
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.delivery)
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.legendary)
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.franchise)
+        && request.resource.data.skills is map
+        && request.resource.data.skills.keys().hasOnly(['origin', 'rapid', 'automatic', 'supplier', 'critical', 'temporal'])
+        && isOptionalNonNegativeNumber(request.resource.data.skills.origin)
+        && isOptionalNonNegativeNumber(request.resource.data.skills.rapid)
+        && isOptionalNonNegativeNumber(request.resource.data.skills.automatic)
+        && isOptionalNonNegativeNumber(request.resource.data.skills.supplier)
+        && isOptionalNonNegativeNumber(request.resource.data.skills.critical)
+        && isOptionalNonNegativeNumber(request.resource.data.skills.temporal)
+        && request.resource.data.updatedAt is string;
+    }
+
     match /admins/{adminId} {
       allow read: if isCafeStaff();
       allow create: if isMaster() && isValidAdmin(adminId);
@@ -161,6 +201,12 @@ service cloud.firestore {
       allow read: if isCafeStaff();
       allow create: if isValidAuditLog();
       allow update, delete: if false;
+    }
+
+    match /clickerSaves/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if isValidClickerSave(userId);
+      allow delete: if false;
     }
 
     match /{document=**} {

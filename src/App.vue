@@ -12,10 +12,12 @@ import {
   createAuditLog,
   createPaymentRequest,
   hasFirebaseConfig,
+  loadClickerSave as loadFirestoreClickerSave,
   loadMembers,
   loadPaymentRequests,
   loadSettings,
   observeAuth,
+  saveClickerSave,
   saveMember,
   saveMembers,
   saveSettings,
@@ -76,8 +78,8 @@ const LOGIN_SATIRE_PHRASES = [
   'Pressione continuar antes que alguém transforme o último café em cappuccino.'
 ]
 
-const CLICKER_STORAGE_KEY = 'passcafe_clicker_v1'
 const REBIRTH_LEVEL = 10
+const CLICKER_AUTO_SAVE_INTERVAL = 30 * 60 * 1000
 const REBIRTH_THRESHOLD = 45 * Math.pow(REBIRTH_LEVEL - 1, 2)
 const CLICKER_UPGRADE_CATALOG = [
   { id: 'grinder', name: 'Moedor turbo', description: '+1 por clique', icon: 'pixelarticons:speed-fast', baseCost: 25, clickBonus: 1, autoBonus: 0 },
@@ -155,6 +157,11 @@ const shopView = ref('upgrades')
 const rebirthConfirming = ref(false)
 const gameStatus = ref('Toque na xícara para preparar')
 const clickBursts = ref([])
+const manualClickerSaveLoading = ref(false)
+const clickerSaveStatus = ref('Aguardando sincronizacao')
+const clickerLastSaveAt = ref(null)
+const clickerLastLoadAt = ref(null)
+const clickerLastError = ref('')
 const clickerUpgrades = reactive(CLICKER_UPGRADE_CATALOG.map((upgrade) => ({
   ...upgrade,
   owned: Number(savedClicker.upgrades?.[upgrade.id] || 0)
@@ -170,6 +177,8 @@ let funnyBannerTimer = null
 let clickerTimer = null
 let clickerSaveTimer = null
 let loadedClickerUserId = null
+let clickerHydrating = false
+let clickerSaveFailed = false
 
 const paidMembers = computed(() => members.value.filter((member) => member.status === 'PAID'))
 const pendingMembers = computed(() => members.value.filter((member) => member.status === 'PENDING'))
@@ -222,12 +231,13 @@ const filteredMembers = computed(() => {
 })
 
 onMounted(async () => {
-  observeAuth((user) => {
+  observeAuth(async (user) => {
     unwatchPaymentRequests()
     paymentRequestsReady = false
     if (currentUser.value?.uid !== user?.uid) userPhotoFailed.value = false
+    if (currentUser.value?.uid && currentUser.value.uid !== user?.uid) await saveClickerProgress()
     currentUser.value = user
-    hydrateClickerUser(user)
+    await hydrateClickerUser(user)
     authReady.value = true
     const email = user?.email?.toLowerCase() || ''
     adminUser.value = ADMIN_EMAILS.includes(email)
@@ -277,7 +287,7 @@ onMounted(async () => {
     addCoffee(autoBrew.value / 4, false)
   }, 250)
 
-  clickerSaveTimer = window.setInterval(saveClickerProgress, 1000)
+  clickerSaveTimer = window.setInterval(saveClickerProgress, CLICKER_AUTO_SAVE_INTERVAL)
 })
 
 onBeforeUnmount(() => {
@@ -331,27 +341,89 @@ function createEmptyClickerSave() {
   return { coins: 0, total: 0, sceneVariant: 0, coinFes: 0, rebirths: 0, upgrades: {}, skills: {} }
 }
 
-function clickerStorageKey(userId) {
-  return `${CLICKER_STORAGE_KEY}_${userId}`
+function summarizeClickerSave(save) {
+  return {
+    coins: Math.floor(Number(save.coins) || 0),
+    total: Math.floor(Number(save.total) || 0),
+    sceneVariant: Number(save.sceneVariant) || 0,
+    coinFes: Number(save.coinFes) || 0,
+    rebirths: Number(save.rebirths) || 0,
+    upgrades: save.upgrades || {},
+    skills: save.skills || {}
+  }
 }
 
-function loadClickerSave(userId) {
-  const emptySave = createEmptyClickerSave()
-  if (!userId) return emptySave
+function clickerRemotePath(userId) {
+  return userId ? `clickerSaves/${userId}` : 'clickerSaves/<sem-usuario>'
+}
+
+function sanitizeRemoteProviderText(value) {
+  return String(value || '')
+    .replace(/Firebase Authentication/gi, 'login Google')
+    .replace(/FirebaseError/gi, 'Erro remoto')
+    .replace(/Firebase/gi, 'servico remoto')
+}
+
+function remoteErrorDetails(error) {
+  return {
+    name: sanitizeRemoteProviderText(error?.name || null),
+    code: error?.code || null,
+    message: sanitizeRemoteProviderText(error?.message || String(error))
+  }
+}
+
+function logClickerSave(level, event, details = {}) {
+  const entry = {
+    event,
+    at: new Date().toISOString(),
+    hasRemoteConfig: hasFirebaseConfig,
+    activeTab: activeTab.value,
+    authReady: authReady.value,
+    currentUid: currentUser.value?.uid || null,
+    currentEmail: currentUser.value?.email || null,
+    ...details
+  }
+
   try {
-    const saved = JSON.parse(localStorage.getItem(clickerStorageKey(userId)) || 'null')
-    if (!saved) return emptySave
-    return {
-      coins: Math.max(0, Number(saved.coins) || 0),
-      total: Math.max(0, Number(saved.total) || 0),
-      sceneVariant: Math.max(0, Number(saved.sceneVariant) || 0),
-      coinFes: Math.max(0, Number(saved.coinFes) || 0),
-      rebirths: Math.max(0, Number(saved.rebirths) || 0),
-      upgrades: saved.upgrades || {},
-      skills: saved.skills || {}
-    }
+    window.__passCafeClickerLogs = [...(window.__passCafeClickerLogs || []), entry].slice(-80)
   } catch {
-    return emptySave
+    // Debug history is optional; console logging below is the source of truth.
+  }
+
+  const logger = console[level] || console.info
+  logger('[PassCafe Clicker Save]', entry)
+}
+
+function formatClickerSaveTime(isoDate) {
+  if (!isoDate) return 'ainda nao salvo'
+  return new Date(isoDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+function buildClickerSavePayload(userId) {
+  const upgrades = Object.fromEntries(clickerUpgrades.map((upgrade) => [upgrade.id, upgrade.owned]))
+  const skills = Object.fromEntries(skillTree.map((skill) => [skill.id, skill.level]))
+  return {
+    uid: userId,
+    coins: coffeeCoins.value,
+    total: totalBrewed.value,
+    sceneVariant: sceneVariant.value,
+    coinFes: coinFes.value,
+    rebirths: rebirths.value,
+    upgrades,
+    skills,
+    updatedAt: new Date().toISOString()
+  }
+}
+
+function normalizeClickerSave(saved = {}) {
+  return {
+    coins: Math.max(0, Number(saved.coins) || 0),
+    total: Math.max(0, Number(saved.total) || 0),
+    sceneVariant: Math.max(0, Number(saved.sceneVariant) || 0),
+    coinFes: Math.max(0, Number(saved.coinFes) || 0),
+    rebirths: Math.max(0, Number(saved.rebirths) || 0),
+    upgrades: saved.upgrades || {},
+    skills: saved.skills || {}
   }
 }
 
@@ -368,31 +440,105 @@ function applyClickerSave(saved) {
   gameStatus.value = 'Toque na xícara para preparar'
 }
 
-function hydrateClickerUser(user) {
+async function hydrateClickerUser(user) {
   const userId = user?.uid || null
-  if (userId === loadedClickerUserId) return
+  if (userId === loadedClickerUserId) {
+    logClickerSave('info', 'load:skip:same-user', { path: clickerRemotePath(userId) })
+    return
+  }
   loadedClickerUserId = userId
-  applyClickerSave(userId ? loadClickerSave(userId) : createEmptyClickerSave())
+  clickerHydrating = true
+  clickerLastError.value = ''
+  clickerSaveStatus.value = userId ? 'Carregando save da nuvem' : 'Sem usuário logado'
+  logClickerSave('info', 'load:start', {
+    path: clickerRemotePath(userId),
+    userEmail: user?.email || null
+  })
+  applyClickerSave(createEmptyClickerSave())
+  try {
+    const loadedSave = userId
+      ? await loadFirestoreClickerSave(userId, createEmptyClickerSave())
+      : createEmptyClickerSave()
+    const normalizedSave = normalizeClickerSave(loadedSave)
+    applyClickerSave(normalizedSave)
+    clickerSaveFailed = false
+    clickerLastLoadAt.value = new Date().toISOString()
+    clickerSaveStatus.value = userId ? 'Save carregado da nuvem' : 'Modo sem save'
+    logClickerSave('info', 'load:success', {
+      path: clickerRemotePath(userId),
+      hasRemoteSave: Boolean(userId && loadedSave?.updatedAt),
+      remoteUpdatedAt: loadedSave?.updatedAt || null,
+      save: summarizeClickerSave(normalizedSave)
+    })
+  } catch (error) {
+    const details = remoteErrorDetails(error)
+    applyClickerSave(createEmptyClickerSave())
+    clickerLastError.value = `${details.code || details.name || 'erro'}: ${details.message}`
+    clickerSaveStatus.value = 'Falha ao carregar save'
+    logClickerSave('error', 'load:error', {
+      path: clickerRemotePath(userId),
+      error: details
+    })
+    showToast(`Nao foi possivel carregar seu progresso do clicker na nuvem. ${details.code || ''}`, 'error')
+  } finally {
+    clickerHydrating = false
+  }
 }
 
-function saveClickerProgress() {
+async function saveClickerProgress() {
   const userId = currentUser.value?.uid
-  if (!userId) return
-  try {
-    const upgrades = Object.fromEntries(clickerUpgrades.map((upgrade) => [upgrade.id, upgrade.owned]))
-    const skills = Object.fromEntries(skillTree.map((skill) => [skill.id, skill.level]))
-    localStorage.setItem(clickerStorageKey(userId), JSON.stringify({
-      coins: coffeeCoins.value,
-      total: totalBrewed.value,
-      sceneVariant: sceneVariant.value,
-      coinFes: coinFes.value,
-      rebirths: rebirths.value,
-      upgrades,
-      skills
-    }))
-  } catch {
-    // The game remains playable when browser storage is unavailable.
+  if (!userId) {
+    logClickerSave('warn', 'save:skip:no-user', { path: clickerRemotePath(userId) })
+    return false
   }
+  if (clickerHydrating) {
+    logClickerSave('warn', 'save:skip:hydrating', { path: clickerRemotePath(userId) })
+    return false
+  }
+
+  const payload = buildClickerSavePayload(userId)
+  clickerSaveStatus.value = 'Salvando na nuvem'
+  clickerLastError.value = ''
+  logClickerSave('info', 'save:start', {
+    path: clickerRemotePath(userId),
+    save: summarizeClickerSave(payload)
+  })
+
+  try {
+    await saveClickerSave(userId, payload)
+    clickerSaveFailed = false
+    clickerLastSaveAt.value = payload.updatedAt
+    clickerSaveStatus.value = 'Save confirmado na nuvem'
+    logClickerSave('info', 'save:success', {
+      path: clickerRemotePath(userId),
+      updatedAt: payload.updatedAt
+    })
+    return true
+  } catch (error) {
+    const details = remoteErrorDetails(error)
+    clickerLastError.value = `${details.code || details.name || 'erro'}: ${details.message}`
+    clickerSaveStatus.value = 'Falha ao salvar na nuvem'
+    logClickerSave('error', 'save:error', {
+      path: clickerRemotePath(userId),
+      error: details,
+      save: summarizeClickerSave(payload)
+    })
+    if (!clickerSaveFailed) {
+      clickerSaveFailed = true
+      showToast(`Nao foi possivel salvar o progresso do clicker na nuvem. ${details.code || ''}`, 'error')
+    }
+    return false
+  }
+}
+
+async function saveClickerProgressManually() {
+  if (manualClickerSaveLoading.value) return
+  manualClickerSaveLoading.value = true
+  const saved = await saveClickerProgress()
+  manualClickerSaveLoading.value = false
+  if (!saved) return
+  showToast('Save manual do clicker enviado para a nuvem.', 'success')
+  playPowerUpSound()
 }
 
 function formatGameNumber(value) {
@@ -773,15 +919,15 @@ function authErrorMessage(error) {
   const code = error?.code || ''
   if (code.includes('auth/popup-closed-by-user')) return 'O login foi cancelado antes de ser concluído.'
   if (code.includes('auth/popup-blocked')) return 'O navegador bloqueou a janela do Google. Libere pop-ups e tente novamente.'
-  if (code.includes('auth/unauthorized-domain')) return 'Este domínio ainda não foi autorizado no Firebase Authentication.'
-  if (code.includes('auth/operation-not-allowed')) return 'O login Google ainda não está habilitado no Firebase Authentication.'
+  if (code.includes('auth/unauthorized-domain')) return 'Este domínio ainda não foi autorizado para o login Google.'
+  if (code.includes('auth/operation-not-allowed')) return 'O login Google ainda não está habilitado.'
   if (code.includes('auth/too-many-requests')) return 'Muitas tentativas. Aguarde um pouco e tente novamente.'
   return 'Não foi possível entrar com o Google. Tente novamente.'
 }
 
 async function signInToApp() {
   if (!hasFirebaseConfig) {
-    showToast('Firebase ainda não configurado. Login Google indisponível.', 'error')
+    showToast('Acesso remoto ainda não configurado. Login Google indisponível.', 'error')
     playErrorSound()
     return
   }
@@ -792,7 +938,7 @@ async function signInToApp() {
     const credential = await signInWithGoogle()
     userPhotoFailed.value = false
     currentUser.value = credential.user
-    hydrateClickerUser(credential.user)
+    await hydrateClickerUser(credential.user)
     const email = credential.user.email?.toLowerCase() || ''
     if (ADMIN_EMAILS.includes(email)) {
       adminUser.value = {
@@ -823,10 +969,10 @@ async function unlockAdmin() {
 }
 
 async function lockAdmin() {
-  saveClickerProgress()
+  await saveClickerProgress()
   await signOutUser()
   currentUser.value = null
-  hydrateClickerUser(null)
+  await hydrateClickerUser(null)
   adminUser.value = null
   paymentRequests.value = []
   unwatchPaymentRequests()
@@ -1155,7 +1301,7 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
             <Icon icon="pixelarticons:chevron-right" class="google-arrow" />
           </button>
           <p v-if="authError" class="access-error">{{ authError }}</p>
-          <p v-else-if="!hasFirebaseConfig" class="access-error">Configure o .env do Firebase para liberar o login Google.</p>
+          <p v-else-if="!hasFirebaseConfig" class="access-error">Configure o acesso remoto para liberar o login Google.</p>
           <p v-else-if="!authReady" class="access-loading">Verificando sessão...</p>
         </section>
 
@@ -1228,9 +1374,21 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
                 {{ isCoffeeMaster ? 'MESTRE DO CAFÉ' : 'MEMBRO CAFEINADO' }}
               </span>
               <strong>{{ currentUser.displayName || currentUser.email }}</strong>
-              <button v-if="adminUnlocked" type="button" class="account-admin-link" @click="switchTab('admin')">
-                <Icon icon="pixelarticons:shield" /> PAINEL DO CAFÉ
-              </button>
+              <div class="account-quick-actions">
+                <button v-if="adminUnlocked" type="button" class="account-admin-link" @click="switchTab('admin')">
+                  <Icon icon="pixelarticons:shield" /> PAINEL DO CAFÉ
+                </button>
+                <button
+                  type="button"
+                  class="account-game-link"
+                  :class="{ active: activeTab === 'game' }"
+                  title="Café Clicker"
+                  aria-label="Abrir Café Clicker"
+                  @click="switchTab('game')"
+                >
+                  <Icon icon="pixelarticons:gamepad" />
+                </button>
+              </div>
             </div>
             <button type="button" class="account-logout" title="Sair da conta" aria-label="Sair da conta" @click="lockAdmin">
               <Icon icon="pixelarticons:logout" />
@@ -1241,7 +1399,6 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
         <nav class="app-header-nav no-scrollbar">
           <button v-for="tab in [
             ['pay', 'pixelarticons:wallet', 'Pagar Cota'],
-            ['game', 'pixelarticons:gamepad', 'Café Clicker'],
             ['list', 'pixelarticons:users', 'Lista dos Cafeinados'],
             ['receipts', 'pixelarticons:receipt', 'Segundas Vias']
           ]" :key="tab[0]" @click="switchTab(tab[0])" class="nav-btn font-bold px-4 py-2 rounded-xl comic-border shadow-comic hover:shadow-comic-hover transition-all flex items-center gap-2 text-sm whitespace-nowrap" :class="activeTab === tab[0] ? 'bg-caramel text-espresso' : tab[0] === 'admin' ? 'bg-roast text-latte' : 'bg-crema text-espresso'">
@@ -1255,7 +1412,11 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
       <span class="inline-flex items-center justify-center gap-2"><Icon icon="pixelarticons:warning-box" class="text-lg" /> {{ funnyBanner }}</span>
     </div>
 
-    <main v-if="authReady && isSignedIn" class="mx-auto px-4 py-6 flex-1 w-full" :class="activeTab === 'game' ? 'max-w-7xl' : 'max-w-5xl'">
+    <main
+      v-if="authReady && isSignedIn"
+      class="flex-1 w-full"
+      :class="activeTab === 'game' ? 'game-main' : 'mx-auto max-w-5xl px-4 py-6'"
+    >
       <div v-if="loading" class="bg-crema p-6 rounded-3xl comic-border-lg shadow-comic-xl text-center font-black">Carregando café...</div>
 
       <section
@@ -1277,11 +1438,18 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
         <div class="signed-game-toolbar">
           <div class="signed-save-status">
             <Icon icon="pixelarticons:save" />
-            <span><strong>PROGRESSO SALVO</strong> neste navegador para sua conta Google</span>
+            <span>
+              <strong>{{ clickerSaveStatus }}</strong>
+              <em>Auto a cada 30 min · ultimo save: {{ formatClickerSaveTime(clickerLastSaveAt) }}</em>
+              <small v-if="clickerLastError">{{ clickerLastError }}</small>
+            </span>
           </div>
           <div class="signed-game-actions">
             <span class="coinfe-chip"><Icon icon="pixelarticons:coin" /><strong>{{ formatGameNumber(coinFes) }}</strong><span>COINFÉS</span></span>
             <span class="world-chip"><span class="world-live-dot"></span>{{ currentWorld.label }} · NÍVEL {{ clickerLevel }}</span>
+            <button type="button" class="manual-save-button" :disabled="manualClickerSaveLoading" @click="saveClickerProgressManually">
+              <Icon :icon="manualClickerSaveLoading ? 'pixelarticons:loader' : 'pixelarticons:save'" /> {{ manualClickerSaveLoading ? 'SALVANDO' : 'SALVAR' }}
+            </button>
             <button type="button" class="back-to-pix-button" @click="switchTab('pay')">
               <Icon icon="pixelarticons:wallet" /> VOLTAR AO PIX
             </button>
@@ -1530,7 +1698,7 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
           </CafeButton>
           <p v-if="signedInWithWrongAccount" class="text-[11px] text-chili font-bold">Conta conectada sem permissão: {{ currentUser.email }}</p>
           <p v-else-if="authError" class="text-[11px] text-chili font-bold">{{ authError }}</p>
-          <p v-else-if="!hasFirebaseConfig" class="text-[11px] text-chili font-bold">Configure o arquivo .env com os dados do app web do Firebase para liberar o login.</p>
+          <p v-else-if="!hasFirebaseConfig" class="text-[11px] text-chili font-bold">Configure o acesso remoto do app para liberar o login.</p>
           <p v-else class="text-[10px] text-mocha/70 italic">Mestre inicial: <code class="font-bold">{{ MASTER_EMAIL }}</code></p>
         </div>
 

@@ -416,11 +416,18 @@ select.comic-border:hover {
 .user-role-label svg { width: 13px; height: 13px; }
 .user-account-copy strong { display: block; margin-top: 0.3rem; overflow: hidden; color: #fffdf9; font-size: 0.78rem; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
 
+.account-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
 .account-admin-link {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  margin-top: 0.35rem;
+  margin-top: 0;
   padding: 0 0 0.15rem;
   border: 0;
   border-bottom: 2px solid #f7c969;
@@ -435,6 +442,43 @@ select.comic-border:hover {
 .account-admin-link:hover { color: #fff3bd; border-color: #fff3bd; }
 .account-admin-link:focus-visible { outline: 2px solid #f7c969; outline-offset: 3px; }
 .account-admin-link svg { width: 13px; height: 13px; }
+
+.account-game-link {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 2px solid #1f120b;
+  border-radius: 4px;
+  background: #f59e0b;
+  color: #1f120b;
+  box-shadow: 2px 2px 0 #1f120b;
+}
+
+.account-game-link.active {
+  background: #34d399;
+}
+
+.account-game-link:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #1f120b;
+}
+
+.account-game-link:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 #1f120b;
+}
+
+.account-game-link:focus-visible {
+  outline: 3px solid #f7c969;
+  outline-offset: 3px;
+}
+
+.account-game-link svg {
+  width: 15px;
+  height: 15px;
+}
 
 .account-logout {
   width: 32px;
@@ -1570,6 +1614,9 @@ select.comic-border:hover {
   .user-avatar { width: 38px; height: 38px; }
   .user-role-label { font-size: 0.48rem; }
   .user-account-copy strong { max-width: 110px; font-size: 0.7rem; }
+  .account-quick-actions { gap: 0.35rem; }
+  .account-admin-link { font-size: 0.48rem; }
+  .account-game-link { width: 22px; height: 22px; }
   .account-logout { width: 29px; height: 29px; }
   .app-header-nav { justify-content: flex-start; }
 }
@@ -1640,6 +1687,12 @@ select.comic-border:hover {
 .access-error, .access-loading { margin: 1rem 0 0; font-size: 0.72rem; font-weight: 800; }
 .access-error { color: #fda4af; }
 .access-loading { color: #d8c9bb; }
+
+.game-main {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+}
 
 .brew-panel {
   display: flex;
@@ -1995,7 +2048,10 @@ select.comic-border:hover {
 .upgrade-shop {
   align-self: center;
   max-height: calc(100vh - 96px);
-  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: clamp(1rem, 2vw, 1.4rem);
   background: #201613;
   color: #fff8ec;
@@ -2036,7 +2092,33 @@ select.comic-border:hover {
 .shop-tabs button svg { width: 15px; height: 15px; }
 .shop-tabs button.active { background: var(--world-accent); color: #1f120b; }
 .shop-tabs button:focus-visible { outline: 2px solid var(--world-mint); outline-offset: 2px; }
-.upgrade-list { display: grid; gap: 0.65rem; margin-top: 1rem; }
+
+.shop-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.35rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--world-accent) #2b1e19;
+}
+
+.shop-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.shop-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid #201613;
+  border-radius: 999px;
+  background: #80613e;
+}
+
+.upgrade-list {
+  min-height: 0;
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
 
 .upgrade-button {
   width: 100%;
@@ -2080,6 +2162,7 @@ select.comic-border:hover {
 
 .skill-tree {
   position: relative;
+  min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.65rem;
@@ -2169,6 +2252,9 @@ select.comic-border:hover {
 .skill-node-level { grid-column: 1 / -1; display: flex; justify-content: space-between; color: #f7c969; font-family: 'Space Grotesk', monospace; font-size: 0.56rem; }
 
 .rebirth-card {
+  flex: 0 0 auto;
+  width: 100%;
+  clear: both;
   margin-top: 0.9rem;
   padding: 0.75rem;
   border: 2px solid #5c463b;
@@ -2230,11 +2316,13 @@ select.comic-border:hover {
 }
 
 .signed-game-view {
-  min-height: min(820px, calc(100vh - 150px));
-  padding: 1rem;
-  border: 4px solid #120b08;
-  border-radius: 8px;
-  box-shadow: 8px 8px 0 rgba(8, 6, 7, 0.3);
+  height: calc(100dvh - 106px);
+  min-height: 560px;
+  padding: clamp(0.45rem, 1vw, 0.85rem);
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .signed-game-toolbar {
@@ -2245,8 +2333,8 @@ select.comic-border:hover {
   justify-content: space-between;
   gap: 1rem;
   width: 100%;
-  margin-bottom: 1rem;
-  padding: 0.65rem 0.75rem;
+  margin-bottom: clamp(0.45rem, 1vw, 0.75rem);
+  padding: 0.5rem 0.65rem;
   border: 3px solid #120b08;
   border-radius: 6px;
   background: #201613;
@@ -2264,7 +2352,32 @@ select.comic-border:hover {
 }
 
 .signed-save-status svg { flex: 0 0 22px; width: 22px; height: 22px; color: var(--world-mint); }
-.signed-save-status strong { color: var(--world-mint); font-family: 'Space Grotesk', monospace; font-size: 0.64rem; }
+.signed-save-status > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.signed-save-status strong {
+  color: var(--world-mint);
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.64rem;
+}
+
+.signed-save-status em,
+.signed-save-status small {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  line-height: 1.15;
+}
+
+.signed-save-status small {
+  color: #ffb4a8;
+}
 
 .signed-game-actions {
   display: flex;
@@ -2273,6 +2386,7 @@ select.comic-border:hover {
   gap: 0.5rem;
 }
 
+.manual-save-button,
 .back-to-pix-button {
   min-height: 34px;
   display: inline-flex;
@@ -2290,9 +2404,23 @@ select.comic-border:hover {
   box-shadow: 3px 3px 0 #120b08;
 }
 
+.manual-save-button {
+  background: var(--world-mint);
+}
+
+.manual-save-button:disabled {
+  cursor: wait;
+  filter: saturate(0.7);
+  opacity: 0.72;
+}
+
+.manual-save-button:hover:not(:disabled),
 .back-to-pix-button:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #120b08; }
+.manual-save-button:active:not(:disabled),
 .back-to-pix-button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #120b08; }
+.manual-save-button:focus-visible,
 .back-to-pix-button:focus-visible { outline: 3px solid var(--world-mint); outline-offset: 3px; }
+.manual-save-button svg,
 .back-to-pix-button svg { width: 16px; height: 16px; }
 
 .signed-clicker-shell {
@@ -2301,13 +2429,29 @@ select.comic-border:hover {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(480px, 1.35fr) minmax(310px, 0.82fr);
+  height: auto;
+  grid-template-columns: minmax(0, 1fr) clamp(300px, 31vw, 420px);
   align-items: stretch;
-  gap: 1rem;
+  gap: clamp(0.55rem, 1vw, 0.9rem);
 }
 
-.signed-clicker-shell .brew-panel { min-height: 650px; }
-.signed-clicker-shell .upgrade-shop { align-self: stretch; max-height: 100%; }
+.signed-clicker-shell .brew-panel {
+  min-height: 0;
+  height: 100%;
+  padding: clamp(0.8rem, 1.25vw, 1.1rem);
+  overflow: hidden;
+}
+
+.signed-clicker-shell .brew-stage {
+  min-height: 0;
+  margin: 0.65rem 0;
+}
+
+.signed-clicker-shell .upgrade-shop {
+  align-self: stretch;
+  max-height: 100%;
+  overflow: hidden;
+}
 
 @keyframes pixelTwinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 @keyframes cloudCruise { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 320px)); } }
@@ -2336,6 +2480,120 @@ select.comic-border:hover {
   .signed-game-view { min-height: auto; }
   .signed-clicker-shell { grid-template-columns: 1fr; }
   .signed-clicker-shell .upgrade-shop { grid-column: auto; max-height: none; }
+}
+
+@media (max-height: 780px) and (min-width: 761px) {
+  .signed-game-view {
+    height: calc(100dvh - 94px);
+    min-height: 0;
+    padding: 0.45rem;
+  }
+
+  .signed-game-toolbar {
+    min-height: 44px;
+    margin-bottom: 0.45rem;
+    padding: 0.35rem 0.55rem;
+  }
+
+  .signed-save-status {
+    font-size: 0.62rem;
+  }
+
+  .signed-save-status svg {
+    width: 18px;
+    height: 18px;
+    flex-basis: 18px;
+  }
+
+  .signed-save-status strong {
+    font-size: 0.58rem;
+  }
+
+  .signed-save-status em,
+  .signed-save-status small {
+    max-width: 430px;
+  }
+
+  .coinfe-chip,
+  .world-chip,
+  .manual-save-button,
+  .back-to-pix-button {
+    min-height: 30px;
+    padding-block: 0.3rem;
+    font-size: 0.56rem;
+  }
+
+  .signed-clicker-shell {
+    grid-template-columns: minmax(0, 1fr) clamp(290px, 32vw, 400px);
+    gap: 0.5rem;
+  }
+
+  .signed-clicker-shell .brew-panel {
+    padding: 0.75rem;
+  }
+
+  .brew-heading h2,
+  .shop-heading h2 {
+    font-size: 1rem;
+  }
+
+  .game-stats {
+    margin-top: 0.65rem;
+  }
+
+  .game-stats > div {
+    padding: 0.45rem 0.55rem;
+  }
+
+  .signed-clicker-shell .brew-stage {
+    margin: 0.55rem 0;
+  }
+
+  .brew-button {
+    transform: scale(0.9);
+  }
+
+  .level-bar {
+    height: 11px;
+    margin-top: 0.3rem;
+  }
+
+  .level-goal {
+    margin-top: 0.25rem;
+  }
+
+  .signed-clicker-shell .upgrade-shop {
+    padding: 0.75rem;
+  }
+
+  .shop-heading {
+    padding-bottom: 0.65rem;
+  }
+
+  .shop-tabs {
+    margin-top: 0.6rem;
+  }
+
+  .upgrade-list,
+  .skill-tree {
+    margin-top: 0.65rem;
+    gap: 0.55rem;
+  }
+
+  .upgrade-button {
+    min-height: 66px;
+    padding: 0.5rem;
+  }
+
+  .rebirth-card {
+    margin-top: 0.7rem;
+    padding: 0.65rem;
+  }
+
+  .shop-tip {
+    margin-top: 0.65rem;
+    padding-top: 0.65rem;
+  }
 }
 
 @media (max-width: 760px) {

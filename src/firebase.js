@@ -53,7 +53,7 @@ export function observeAuth(callback) {
 }
 
 export async function signInWithGoogle() {
-  if (!auth) throw new Error('Firebase nao configurado.')
+  if (!auth) throw new Error('Acesso remoto nao configurado.')
   return signInWithPopup(auth, googleProvider)
 }
 
@@ -114,6 +114,17 @@ export async function loadPaymentRequests() {
   if (!db) return []
   const snapshot = await getDocs(query(collection(db, 'paymentRequests'), orderBy('requestedAt', 'desc')))
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+}
+
+export async function loadClickerSave(userId, defaultSave) {
+  if (!db || !userId) return defaultSave
+  const snapshot = await getDoc(doc(db, 'clickerSaves', userId))
+  return snapshot.exists() ? { ...defaultSave, ...snapshot.data() } : defaultSave
+}
+
+export async function saveClickerSave(userId, save) {
+  if (!db || !userId) return
+  await setDoc(doc(db, 'clickerSaves', userId), save, { merge: true })
 }
 
 export function watchPaymentRequests(callback) {

@@ -103,6 +103,7 @@ function formatGameNumber(value) {
       </button>
     </div>
 
+    <div class="shop-scroll">
     <div v-if="shopView === 'upgrades'" class="upgrade-list">
       <button
         v-for="upgrade in clickerUpgrades"
@@ -165,6 +166,7 @@ function formatGameNumber(value) {
     <div class="shop-tip">
       <Icon :icon="shopView === 'upgrades' ? 'pixelarticons:trending-up' : 'pixelarticons:coin'" />
       <span>{{ shopView === 'upgrades' ? 'Upgrades são reiniciados ao renascer.' : 'Habilidades e CoinFés permanecem após cada renascimento.' }}</span>
+    </div>
     </div>
   </aside>
 </template>
