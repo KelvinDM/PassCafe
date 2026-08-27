@@ -726,10 +726,9 @@ function evaluateAchievements({ announce = true, persist = true } = {}) {
   achievementUnlockedAt.value = nextDates
 
   if (announce) {
-    const message = newlyUnlocked.length === 1
-      ? `Conquista desbloqueada: ${newlyUnlocked[0].title}!`
-      : `${newlyUnlocked.length} conquistas desbloqueadas!`
-    showToast(message, 'success')
+    newlyUnlocked.forEach((achievement) => {
+      showToast(achievement.title, 'success', { achievement, duration: 5200 })
+    })
     playPowerUpSound()
   }
   if (persist) saveClickerProgress()
@@ -1674,12 +1673,15 @@ function printReceipt() {
   window.print()
 }
 
-function showToast(message, type = 'info') {
-  const id = Date.now()
-  toasts.value.push({ id, message, type })
+let toastSequence = 0
+
+function showToast(message, type = 'info', options = {}) {
+  const id = `${Date.now()}-${toastSequence += 1}`
+  const { achievement = null, duration = 3200 } = options
+  toasts.value.push({ id, message, type, achievement })
   setTimeout(() => {
     toasts.value = toasts.value.filter((toast) => toast.id !== id)
-  }, 3200)
+  }, duration)
 }
 
 let audioContext
@@ -1735,14 +1737,24 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
 
 <template>
   <div class="min-h-screen flex flex-col text-espresso selection:bg-caramel selection:text-foam">
-    <div class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none">
+    <div class="toast-stack fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none">
       <div
         v-for="toast in toasts"
         :key="toast.id"
-        class="comic-border shadow-comic rounded-xl px-4 py-3 text-sm font-bold bg-foam"
-        :class="{ 'text-emerald-700': toast.type === 'success', 'text-red-700': toast.type === 'error', 'text-mocha': toast.type === 'info' }"
+        class="app-toast comic-border shadow-comic rounded-xl px-4 py-3 text-sm font-bold bg-foam"
+        :class="[{ 'achievement-toast': toast.achievement }, { 'text-emerald-700': toast.type === 'success', 'text-red-700': toast.type === 'error', 'text-mocha': toast.type === 'info' }]"
       >
-        {{ toast.message }}
+        <img
+          v-if="toast.achievement"
+          :src="toast.achievement.image"
+          :alt="`Arte da conquista ${toast.achievement.title}`"
+          class="achievement-toast-image"
+        >
+        <span class="toast-copy">
+          <span v-if="toast.achievement" class="achievement-toast-label">CONQUISTA DESBLOQUEADA</span>
+          <strong>{{ toast.message }}</strong>
+          <small v-if="toast.achievement">{{ toast.achievement.phrase }}</small>
+        </span>
       </div>
     </div>
 
