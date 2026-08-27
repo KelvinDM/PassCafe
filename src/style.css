@@ -2539,8 +2539,36 @@ select.comic-border:hover {
   letter-spacing: 0;
 }
 
+.brew-heading-status {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
+.brew-level-chip {
+  min-width: 62px;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.45rem;
+  border: 3px solid #1f120b;
+  border-radius: 4px;
+  background: #1f120b;
+  color: #fff8ec;
+  box-shadow: inset 0 -4px color-mix(in srgb, var(--world-accent) 76%, #1f120b);
+  font-family: 'Space Grotesk', monospace;
+  animation: headingLevelPop 650ms steps(7) both;
+}
+
+.brew-level-chip small { font-size: 0.46rem; font-weight: 900; writing-mode: vertical-rl; transform: rotate(180deg); }
+.brew-level-chip strong { color: var(--world-accent); font-size: 1.35rem; line-height: 1; text-shadow: 2px 2px 0 #000; }
+
 .brew-rate {
   flex: 0 0 auto;
+  display: grid;
+  place-items: center;
   padding: 0.4rem 0.55rem;
   border: 2px solid #1f120b;
   border-radius: 4px;
@@ -2637,6 +2665,34 @@ select.comic-border:hover {
 .stage-nameplate span { min-width: 0; display: flex; flex-direction: column; }
 .stage-nameplate small { color: var(--stage-particle); font-size: 0.45rem; font-weight: 900; letter-spacing: 0.08em; }
 .stage-nameplate b { overflow: hidden; font-size: 0.58rem; text-overflow: ellipsis; white-space: nowrap; }
+
+.stage-level-display {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 9;
+  width: 132px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 0.45rem 0.55rem;
+  border: 3px solid #1f120b;
+  border-top-color: var(--stage-glow);
+  border-radius: 4px;
+  background: rgba(17, 10, 18, 0.9);
+  color: #fff8ec;
+  box-shadow: 4px 4px 0 rgba(31, 18, 11, 0.6), 0 0 18px color-mix(in srgb, var(--stage-glow) 52%, transparent);
+  font-family: 'Space Grotesk', monospace;
+  pointer-events: none;
+  animation: levelDisplayArrival 650ms steps(7) both, levelDisplayPulse 2.5s ease-in-out 700ms infinite;
+}
+
+.stage-level-display > span { color: var(--stage-particle); font-size: 0.48rem; font-weight: 900; letter-spacing: 0.08em; }
+.stage-level-display > strong { grid-row: 1 / 3; grid-column: 2; color: var(--stage-glow); font-size: 2.35rem; line-height: 0.9; text-shadow: 3px 3px 0 #000; }
+.stage-level-display > b,
+.stage-level-display > small { grid-column: 1 / -1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stage-level-display > b { margin-top: 0.32rem; color: #fff8ec; font-size: 0.52rem; }
+.stage-level-display > small { margin-top: 0.12rem; color: var(--stage-particle); font-size: 0.42rem; font-weight: 900; }
 
 .stage-atmosphere {
   position: absolute;
@@ -2756,6 +2812,15 @@ select.comic-border:hover {
   height: 52px;
 }
 
+.cup-face::before,
+.cup-face::after,
+.cup-face i::after,
+.cup-face b::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
 .cup-face i,
 .cup-face b {
   position: absolute;
@@ -2782,27 +2847,199 @@ select.comic-border:hover {
   transform: translateX(-50%);
 }
 
+/* As expressões acompanham a personalidade da aura de cada nível. */
+.cup-level-2 .cup-face i,
+.cup-level-2 .cup-face b {
+  top: 2px;
+  width: 20px;
+  height: 24px;
+  border-width: 4px;
+  border-radius: 45% 45% 35% 35%;
+  background: #252035;
+  box-shadow: inset 0 -6px #f577aa;
+  animation-duration: 5.4s;
+}
+.cup-level-2 .cup-face i { left: 7px; }
+.cup-level-2 .cup-face b { right: 7px; }
+.cup-level-2 .cup-face i::after,
+.cup-level-2 .cup-face b::after { left: 3px; top: 2px; width: 6px; height: 6px; background: #fff; }
+.cup-level-2 .cup-face em { bottom: 2px; width: 13px; height: 9px; border-width: 3px; border-top: 3px solid #1f120b; border-radius: 2px 2px 10px 10px; background: #ff91b8; }
+.cup-level-2 .cup-face::before { left: 0; top: 31px; width: 13px; height: 6px; background: #ff8faf; box-shadow: 73px 0 #ff8faf; opacity: 0.72; }
+
+.cup-level-3 .cup-face i,
+.cup-level-3 .cup-face b {
+  top: 8px;
+  width: 24px;
+  height: 8px;
+  border: 0;
+  background: #1f120b;
+  animation: none;
+}
+.cup-level-3 .cup-face i { left: 5px; transform: rotate(17deg); }
+.cup-level-3 .cup-face b { right: 5px; transform: rotate(-17deg); }
+.cup-level-3 .cup-face em { bottom: 1px; width: 38px; height: 16px; border: 4px solid #1f120b; border-radius: 2px; background: repeating-linear-gradient(90deg, #fff7d8 0 7px, #1f120b 7px 9px); }
+.cup-level-3 .cup-face::before { left: 9px; top: 1px; width: 22px; height: 5px; background: #8e2415; box-shadow: 46px 0 #8e2415; transform: rotate(8deg); }
+
+.cup-level-4 .cup-face i,
+.cup-level-4 .cup-face b { top: 10px; width: 11px; height: 13px; border: 4px solid #1f120b; border-radius: 0; background: #fff8ec; animation: none; }
+.cup-level-4 .cup-face i { left: 14px; }
+.cup-level-4 .cup-face b { right: 14px; }
+.cup-level-4 .cup-face em { bottom: 7px; width: 34px; height: 5px; border: 0; border-radius: 0; background: #1f120b; }
+
+.cup-level-5 .cup-face i,
+.cup-level-5 .cup-face b { top: 10px; width: 22px; height: 6px; border: 0; background: #1f120b; animation: none; }
+.cup-level-5 .cup-face i { left: 7px; transform: rotate(7deg); }
+.cup-level-5 .cup-face b { right: 7px; transform: rotate(-7deg); }
+.cup-level-5 .cup-face em { bottom: 9px; width: 24px; height: 7px; border: 0; border-bottom: 5px solid #1f120b; border-radius: 0; transform: translateX(-50%) skewX(-23deg); }
+.cup-level-5 .cup-face::after { left: 16px; bottom: -5px; width: 54px; height: 26px; border-bottom: 5px solid #1f120b; background: linear-gradient(67deg, transparent 0 43%, #1f120b 44% 57%, transparent 58%) left / 50% 100% no-repeat, linear-gradient(-67deg, transparent 0 43%, #1f120b 44% 57%, transparent 58%) right / 50% 100% no-repeat; }
+
+.cup-level-6 .cup-face i,
+.cup-level-6 .cup-face b { top: 13px; width: 23px; height: 5px; border: 0; border-radius: 0; background: #1f120b; animation: none; }
+.cup-level-6 .cup-face i { left: 6px; transform: rotate(5deg); }
+.cup-level-6 .cup-face b { right: 6px; transform: rotate(-5deg); }
+.cup-level-6 .cup-face em { bottom: 3px; width: 30px; height: 12px; border-width: 0 0 4px; border-radius: 0 0 50% 50%; }
+.cup-level-6 .cup-face::before { left: 1px; top: 29px; width: 15px; height: 6px; border-radius: 50%; background: #f29980; box-shadow: 69px 0 #f29980; opacity: 0.65; }
+
+.cup-level-7 .cup-face i,
+.cup-level-7 .cup-face b { top: 8px; width: 24px; height: 18px; border: 4px solid #1f120b; border-radius: 8px; background: #fff5c6; animation: none; }
+.cup-level-7 .cup-face i { left: 4px; }
+.cup-level-7 .cup-face b { right: 4px; }
+.cup-level-7 .cup-face i::after,
+.cup-level-7 .cup-face b::after { right: 1px; top: 2px; width: 8px; height: 10px; background: #1f120b; box-shadow: 0 0 5px #7c9fff; }
+.cup-level-7 .cup-face em { left: 57%; bottom: 1px; width: 27px; height: 8px; border: 0; border-bottom: 5px solid #1f120b; border-radius: 0; transform: translateX(-50%) rotate(-8deg); }
+
+.cup-level-8 .cup-face i,
+.cup-level-8 .cup-face b { top: 5px; width: 23px; height: 23px; border: 0; background: #173428; color: #a9ff3f; box-shadow: 0 0 9px #5fff53; animation: none; }
+.cup-level-8 .cup-face i { left: 6px; clip-path: polygon(0 15%, 15% 0, 50% 35%, 85% 0, 100% 15%, 65% 50%, 100% 85%, 85% 100%, 50% 65%, 15% 100%, 0 85%, 35% 50%); }
+.cup-level-8 .cup-face b { right: 6px; border: 4px solid #193125; border-radius: 50%; background: #a8ff46; }
+.cup-level-8 .cup-face b::after { left: 4px; top: 4px; width: 7px; height: 7px; border-radius: 50%; background: #173428; }
+.cup-level-8 .cup-face em { bottom: 0; width: 40px; height: 15px; border: 0; border-radius: 0; background: #193125; clip-path: polygon(0 18%, 13% 48%, 25% 5%, 38% 48%, 50% 4%, 63% 48%, 77% 4%, 89% 48%, 100% 17%, 95% 100%, 5% 100%); }
+
+.cup-level-9 .cup-face i,
+.cup-level-9 .cup-face b { top: 2px; width: 22px; height: 27px; border: 4px solid #10243a; border-radius: 50%; background: #efffff; box-shadow: 0 0 8px #78edff; animation: none; }
+.cup-level-9 .cup-face i { left: 5px; transform: rotate(-5deg); }
+.cup-level-9 .cup-face b { right: 5px; transform: rotate(5deg); }
+.cup-level-9 .cup-face i::after,
+.cup-level-9 .cup-face b::after { left: 6px; bottom: 2px; width: 6px; height: 9px; border-radius: 50%; background: #10243a; }
+.cup-level-9 .cup-face em { bottom: -4px; width: 19px; height: 23px; border: 5px solid #10243a; border-radius: 50%; background: #5cb9dc; }
+
+.cup-level-10 .cup-face i,
+.cup-level-10 .cup-face b { top: 3px; width: 25px; height: 25px; border: 0; border-radius: 0; background: #fff27a; color: #70ffe7; filter: drop-shadow(0 0 5px currentColor); clip-path: polygon(50% 0, 62% 35%, 100% 50%, 62% 65%, 50% 100%, 38% 65%, 0 50%, 38% 35%); animation: bossEyeFlash 1.8s steps(5) infinite; }
+.cup-level-10 .cup-face i { left: 4px; }
+.cup-level-10 .cup-face b { right: 4px; animation-delay: -0.25s; }
+.cup-level-10 .cup-face em { bottom: -1px; width: 45px; height: 19px; border: 4px solid #160c28; border-radius: 3px 3px 20px 20px; background: repeating-linear-gradient(90deg, #fff9c9 0 8px, #160c28 8px 10px); box-shadow: 0 0 8px #70ffe7; }
+.cup-level-10 .cup-face::before { left: 4px; top: -3px; width: 29px; height: 5px; background: #160c28; box-shadow: 49px 0 #160c28; transform: rotate(7deg); }
+
 .cup-aura {
   position: absolute;
   z-index: 0;
-  top: 18px;
-  left: 19px;
-  width: 194px;
-  height: 194px;
-  border: 8px solid var(--stage-glow);
-  border-radius: 50%;
-  opacity: 0;
-  box-shadow: 0 0 28px var(--stage-glow), inset 0 0 24px var(--stage-glow);
+  inset: 0;
+  width: 232px;
+  height: 232px;
   pointer-events: none;
+  animation: auraLevelEntrance 850ms steps(8) both;
 }
 
-.cup-level-4 .cup-aura,
-.cup-level-5 .cup-aura,
-.cup-level-6 .cup-aura { opacity: 0.14; animation: cupAuraPulse 2.5s steps(5) infinite; }
-.cup-level-7 .cup-aura,
-.cup-level-8 .cup-aura,
-.cup-level-9 .cup-aura { opacity: 0.28; animation: cupAuraPulse 1.9s steps(6) infinite; }
-.cup-level-10 .cup-aura { opacity: 0.52; animation: cupAuraFinal 4.2s linear infinite; }
+.aura-ring,
+.aura-emblem {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+}
+
+.aura-ring {
+  inset: 17px;
+  border: 6px solid #f7a63a;
+  box-shadow: 0 0 18px rgba(247, 166, 58, 0.8), inset 0 0 17px rgba(255, 224, 145, 0.48);
+}
+
+.aura-emblem {
+  inset: 31px;
+  border: 3px dashed rgba(255, 239, 187, 0.82);
+}
+
+.cup-aura > i {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #ffe2a1;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.cup-aura > i:nth-of-type(1) { left: 11%; top: 48%; animation-delay: -0.15s; }
+.cup-aura > i:nth-of-type(2) { left: 20%; top: 23%; animation-delay: -0.8s; }
+.cup-aura > i:nth-of-type(3) { left: 39%; top: 10%; animation-delay: -1.35s; }
+.cup-aura > i:nth-of-type(4) { left: 65%; top: 11%; animation-delay: -0.45s; }
+.cup-aura > i:nth-of-type(5) { left: 84%; top: 27%; animation-delay: -1.7s; }
+.cup-aura > i:nth-of-type(6) { left: 91%; top: 52%; animation-delay: -1s; }
+.cup-aura > i:nth-of-type(7) { left: 79%; top: 76%; animation-delay: -0.3s; }
+.cup-aura > i:nth-of-type(8) { left: 60%; top: 89%; animation-delay: -1.5s; }
+.cup-aura > i:nth-of-type(9) { left: 35%; top: 89%; animation-delay: -0.65s; }
+.cup-aura > i:nth-of-type(10) { left: 15%; top: 74%; animation-delay: -1.9s; }
+.cup-aura > i:nth-of-type(11) { left: 5%; top: 29%; animation-delay: -1.15s; }
+.cup-aura > i:nth-of-type(12) { left: 91%; top: 72%; animation-delay: -2.1s; }
+
+/* Nível 1: o calor clássico do primeiro expresso. */
+.cup-level-1 .aura-ring { border-style: dashed; animation: auraCoffeeHeat 2.8s steps(7) infinite; }
+.cup-level-1 .aura-emblem { border-color: rgba(255, 224, 145, 0.42); animation: auraSlowOrbit 8s linear infinite; }
+.cup-level-1 .cup-aura > i { color: #ffca62; animation: auraCoffeeMote 2.6s steps(6) infinite; }
+
+/* Nível 2: bolhas, ondulações e maré azul. */
+.cup-level-2 .aura-ring { border-color: #67f0ff; box-shadow: 0 0 18px #1cc8ec, inset 0 0 24px rgba(103, 240, 255, 0.72); animation: auraWaterRing 2.25s ease-in-out infinite; }
+.cup-level-2 .aura-emblem { border: 4px double rgba(214, 255, 255, 0.82); animation: auraWaterRipple 2.25s ease-out infinite; }
+.cup-level-2 .cup-aura > i { width: 9px; height: 9px; border: 2px solid #d9ffff; border-radius: 50%; background: rgba(31, 199, 236, 0.72); color: #65efff; animation: auraBubble 2.7s ease-in infinite; }
+
+/* Nível 3: labaredas pixeladas do oásis. */
+.cup-level-3 .aura-ring { border-color: #ff7a1a; border-top-color: #ffe46c; border-bottom-color: #e52916; box-shadow: 0 -8px 24px #ffb31f, 0 9px 24px #e52a16, inset 0 0 18px rgba(255, 75, 13, 0.76); animation: auraFireRing 1.15s steps(5) infinite; }
+.cup-level-3 .aura-emblem { border: 5px dotted #ffd85a; animation: auraFireCore 1.5s steps(6) infinite; }
+.cup-level-3 .cup-aura > i { top: auto; bottom: 17px; width: 14px; height: 23px; border: 0; background: linear-gradient(#fff075, #ff7b16 50%, #d51f16); box-shadow: 0 0 12px #ff561c; clip-path: polygon(50% 0, 100% 55%, 72% 100%, 50% 78%, 24% 100%, 0 55%); animation: auraFlame 1.8s steps(7) infinite; }
+.cup-level-3 .cup-aura > i:nth-of-type(1) { left: 6%; }
+.cup-level-3 .cup-aura > i:nth-of-type(2) { left: 14%; }
+.cup-level-3 .cup-aura > i:nth-of-type(3) { left: 23%; }
+.cup-level-3 .cup-aura > i:nth-of-type(4) { left: 32%; }
+.cup-level-3 .cup-aura > i:nth-of-type(5) { left: 41%; }
+.cup-level-3 .cup-aura > i:nth-of-type(6) { left: 49%; }
+.cup-level-3 .cup-aura > i:nth-of-type(7) { left: 57%; }
+.cup-level-3 .cup-aura > i:nth-of-type(8) { left: 65%; }
+.cup-level-3 .cup-aura > i:nth-of-type(9) { left: 73%; }
+.cup-level-3 .cup-aura > i:nth-of-type(10) { left: 81%; }
+.cup-level-3 .cup-aura > i:nth-of-type(11) { left: 89%; }
+.cup-level-3 .cup-aura > i:nth-of-type(12) { left: 46%; }
+
+/* Nível 4: vento sakura, pétalas e ar em rotação. */
+.cup-level-4 .aura-ring { border: 5px dashed #ffe9f3; box-shadow: 0 0 20px #ff8db8, inset 0 0 20px rgba(255, 214, 232, 0.66); animation: auraWindRing 4.6s linear infinite; }
+.cup-level-4 .aura-emblem { inset: 25px; border: 3px solid transparent; border-left-color: #fff; border-right-color: #ff8fba; animation: auraWindCounter 3.1s linear infinite; }
+.cup-level-4 .cup-aura > i { width: 16px; height: 8px; border: 0; border-radius: 100% 0 100% 0; background: linear-gradient(135deg, #fff, #ff91ba); color: #ff9cc2; animation: auraPetalWind 3.4s ease-in-out infinite; }
+
+/* Nível 5: ouro faraônico com raios e brilho metálico. */
+.cup-level-5 .aura-ring { border: 7px double #ffe66e; box-shadow: 0 0 11px #fff8be, 0 0 29px #f0a713, inset 0 0 25px rgba(255, 205, 45, 0.72); animation: auraGoldRing 1.85s steps(7) infinite; }
+.cup-level-5 .aura-emblem { inset: 5px; border: 0; border-radius: 0; background: repeating-conic-gradient(from 0deg, rgba(255, 239, 122, 0.62) 0 4deg, transparent 4deg 18deg); clip-path: polygon(50% 0, 58% 27%, 79% 8%, 73% 36%, 100% 33%, 77% 51%, 97% 68%, 69% 66%, 74% 94%, 54% 73%, 45% 100%, 40% 72%, 17% 91%, 25% 64%, 0 61%, 24% 47%, 5% 25%, 32% 32%); animation: auraGoldRays 6s linear infinite; }
+.cup-level-5 .cup-aura > i { width: 9px; height: 9px; border: 0; background: #fff7a5; color: #ffd52c; box-shadow: 0 0 4px #fff, 0 0 13px #ffc21c; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: auraGoldGlint 1.9s steps(5) infinite; }
+
+/* Nível 6: folhas e força mineral da terra. */
+.cup-level-6 .aura-ring { border-color: #71ee7b; border-style: ridge; box-shadow: 0 0 20px #3ac85c, inset 0 0 23px rgba(140, 235, 109, 0.58); animation: auraEarthBreath 3s steps(8) infinite; }
+.cup-level-6 .aura-emblem { border: 4px dashed #e3d172; animation: auraSlowOrbit 9s linear infinite reverse; }
+.cup-level-6 .cup-aura > i { width: 14px; height: 9px; border: 2px solid #e6f29a; border-radius: 100% 0 100% 0; background: #3eb95f; color: #68e880; animation: auraLeaf 3.2s ease-in-out infinite; }
+
+/* Nível 7: círculo arcano violeta e runas orbitais. */
+.cup-level-7 .aura-ring { border: 5px double #b98bff; box-shadow: 0 0 14px #7c56ff, 0 0 32px rgba(214, 117, 255, 0.85), inset 0 0 24px rgba(96, 61, 224, 0.72); animation: auraArcaneRing 4.2s linear infinite; }
+.cup-level-7 .aura-emblem { inset: 23px; border: 4px dashed #ffd579; border-radius: 22%; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); animation: auraArcaneCounter 5s linear infinite; }
+.cup-level-7 .cup-aura > i { width: 11px; height: 11px; border: 2px solid #f6d678; background: #704de2; color: #c68cff; box-shadow: inset 0 0 4px #fff, 0 0 13px #9e6bff; transform: rotate(45deg); animation: auraRune 2.5s steps(6) infinite; }
+
+/* Nível 8: energia verde instável, viva e elétrica. */
+.cup-level-8 .aura-ring { border: 6px solid #8cff3f; border-left-color: #2cf2c0; border-right-color: #efff71; box-shadow: 0 0 12px #d8ff42, 0 0 35px #22e58d, inset 0 0 28px rgba(60, 255, 120, 0.7); animation: auraGreenRing 1.05s steps(5) infinite; }
+.cup-level-8 .aura-emblem { inset: 20px; border: 4px dotted #c9ff5a; animation: auraGreenCore 2.2s linear infinite; }
+.cup-level-8 .cup-aura > i { width: 6px; height: 18px; border: 0; border-radius: 5px; background: #d8ff3f; color: #36ff8a; box-shadow: 0 0 5px #fff, 0 0 15px #36ff8a; animation: auraGreenEnergy 1.45s steps(6) infinite; }
+
+/* Nível 9: plasma lunar e relâmpagos azuis. */
+.cup-level-9 .aura-ring { border: 7px solid #d9fbff; border-top-color: #4ef5ff; border-bottom-color: #397dff; box-shadow: 0 0 12px #fff, 0 0 34px #3adfff, inset 0 0 26px rgba(66, 137, 255, 0.8); animation: auraPlasmaRing 1.3s steps(5) infinite; }
+.cup-level-9 .aura-emblem { inset: 24px; border: 3px dashed #80eaff; animation: auraPlasmaCore 3s linear infinite reverse; }
+.cup-level-9 .cup-aura > i { width: 10px; height: 23px; border: 0; border-radius: 0; background: linear-gradient(#fff, #54e9ff 55%, #376cff); color: #6fe9ff; clip-path: polygon(55% 0, 100% 0, 68% 39%, 96% 39%, 28% 100%, 47% 54%, 14% 54%); animation: auraBolt 1.6s steps(4) infinite; }
+
+/* Nível 10: coroa, estrelas e o espectro inteiro do cosmos. */
+.cup-level-10 .aura-ring { inset: 11px; border: 0; background: conic-gradient(#6effe4, #5c65ff, #e961ff, #ffcf4c, #6effe4); -webkit-mask: radial-gradient(circle, transparent 0 61%, #000 62% 69%, transparent 70%); mask: radial-gradient(circle, transparent 0 61%, #000 62% 69%, transparent 70%); filter: drop-shadow(0 0 10px #71ffe8) drop-shadow(0 0 19px #ff61d2); animation: auraCosmicRing 3.2s linear infinite; }
+.cup-level-10 .aura-emblem { inset: 0; border: 0; border-radius: 0; background: repeating-conic-gradient(from 12deg, rgba(126, 255, 234, 0.5) 0 3deg, transparent 3deg 15deg, rgba(255, 102, 207, 0.45) 15deg 18deg, transparent 18deg 30deg); clip-path: polygon(50% 0, 57% 28%, 75% 5%, 72% 34%, 98% 22%, 77% 45%, 100% 55%, 72% 59%, 91% 84%, 64% 69%, 62% 100%, 49% 73%, 34% 98%, 38% 68%, 9% 84%, 28% 57%, 0 48%, 29% 42%, 6% 19%, 37% 32%); animation: auraCosmicRays 7s linear infinite reverse; }
+.cup-level-10 .cup-aura > i { width: 11px; height: 11px; border: 0; background: #fff5a3; color: #ff72d6; box-shadow: 0 0 5px #fff, 0 0 15px currentColor; clip-path: polygon(50% 0, 62% 36%, 100% 50%, 62% 64%, 50% 100%, 38% 64%, 0 50%, 38% 36%); animation: auraCosmicStar 1.7s steps(6) infinite; }
 
 .cup-level-2 .brew-cup { background: linear-gradient(145deg, #6ee7d8, #29a6c6); }
 .cup-level-3 .brew-cup { background: linear-gradient(145deg, #ffd06b, #d97732); }
@@ -2828,8 +3065,8 @@ select.comic-border:hover {
 .cup-ascended .cup-aura::before {
   content: '';
   position: absolute;
-  left: 54px;
-  top: -45px;
+  left: 81px;
+  top: -26px;
   width: 70px;
   height: 38px;
   background: #ffe36e;
@@ -3398,6 +3635,24 @@ select.comic-border:hover {
 .rebirth-bar { height: 9px; margin: 0.55rem 0; padding: 2px; border: 2px solid #5c463b; background: #2b1e19; }
 .rebirth-bar i { display: block; height: 100%; background: #f7c969; transition: width 300ms ease; }
 
+.rebirth-farm-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.2rem 0.5rem;
+  margin: 0 0 0.55rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid #7f6535;
+  background: rgba(247, 201, 105, 0.08);
+  color: #d8c5a2;
+  font-family: 'Space Grotesk', monospace;
+  text-transform: uppercase;
+}
+
+.rebirth-farm-status span { min-width: 0; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.5rem; font-weight: 900; }
+.rebirth-farm-status span svg { flex: 0 0 14px; width: 14px; height: 14px; color: #f7c969; }
+.rebirth-farm-status strong { color: #f7c969; font-size: 0.54rem; white-space: nowrap; }
+.rebirth-farm-status small { grid-column: 1 / -1; color: #a99588; font-size: 0.46rem; font-weight: 800; }
+
 .rebirth-button {
   width: 100%;
   min-height: 36px;
@@ -3598,8 +3853,42 @@ select.comic-border:hover {
 @keyframes stageBackdropArrival { from { opacity: 0; transform: scale(1.12); filter: saturate(0.4) brightness(1.8); } to { opacity: 1; transform: scale(1); filter: saturate(1.04) contrast(1.03); } }
 @keyframes stageBackdropDrift { from { transform: scale(1.01) translate3d(-0.4%, -0.25%, 0); } to { transform: scale(1.045) translate3d(0.55%, 0.35%, 0); } }
 @keyframes stageMote { 0% { transform: translateY(32px) scale(0.5); opacity: 0; } 28% { opacity: 0.7; } 75% { opacity: 0.35; } 100% { transform: translate(16px, -95px) scale(1.25); opacity: 0; } }
+@keyframes headingLevelPop { 0% { transform: scale(0.45) rotate(-8deg); filter: brightness(2.4); } 58% { transform: scale(1.22) rotate(4deg); } 78% { transform: scale(0.92) rotate(-2deg); } 100% { transform: none; filter: none; } }
+@keyframes levelDisplayArrival { 0% { opacity: 0; transform: translate(28px, -14px) scale(0.58); filter: brightness(2.2); } 58% { opacity: 1; transform: translate(-5px, 3px) scale(1.08); } 78% { transform: translate(2px, -1px) scale(0.96); } 100% { opacity: 1; transform: none; filter: none; } }
+@keyframes levelDisplayPulse { 0%, 100% { filter: brightness(1); box-shadow: 4px 4px 0 rgba(31, 18, 11, 0.6), 0 0 13px color-mix(in srgb, var(--stage-glow) 45%, transparent); } 50% { filter: brightness(1.24); box-shadow: 4px 4px 0 rgba(31, 18, 11, 0.6), 0 0 28px color-mix(in srgb, var(--stage-glow) 88%, transparent); } }
 @keyframes cupLevelArrival { 0% { transform: translateY(22px) scale(0.68) rotate(-8deg); filter: brightness(2.2); } 55% { transform: translateY(-14px) scale(1.12) rotate(5deg); } 76% { transform: translateY(5px) scale(0.96) rotate(-2deg); } 100% { transform: none; filter: none; } }
 @keyframes cupBlink { 0%, 43%, 47%, 100% { transform: scaleY(1); } 44%, 46% { transform: scaleY(0.18); } }
+@keyframes auraLevelEntrance { 0% { opacity: 0; transform: scale(0.25) rotate(-30deg); filter: brightness(3); } 52% { opacity: 1; transform: scale(1.22) rotate(7deg); } 76% { transform: scale(0.92) rotate(-3deg); } 100% { opacity: 1; transform: none; filter: none; } }
+@keyframes auraCoffeeHeat { 0%, 100% { transform: scale(0.94); opacity: 0.62; filter: blur(0); } 50% { transform: scale(1.03); opacity: 0.92; filter: blur(1px) brightness(1.25); } }
+@keyframes auraSlowOrbit { to { transform: rotate(360deg); } }
+@keyframes auraCoffeeMote { 0% { transform: translateY(18px) scale(0.45); opacity: 0; } 24% { opacity: 0.9; } 100% { transform: translate(-6px, -38px) scale(0.25); opacity: 0; } }
+@keyframes auraWaterRing { 0%, 100% { transform: scale(0.95); filter: brightness(0.9); } 50% { transform: scale(1.04); filter: brightness(1.35); } }
+@keyframes auraWaterRipple { 0% { transform: scale(0.78); opacity: 0.95; } 80%, 100% { transform: scale(1.18); opacity: 0; } }
+@keyframes auraBubble { 0% { transform: translateY(18px) scale(0.3); opacity: 0; } 30% { opacity: 0.95; } 100% { transform: translate(7px, -38px) scale(1.15); opacity: 0; } }
+@keyframes auraFireRing { 0%, 100% { transform: scaleX(0.96) scaleY(1.02); filter: brightness(0.95); } 45% { transform: scaleX(1.04) scaleY(0.96); filter: brightness(1.45); } }
+@keyframes auraFireCore { 0%, 100% { transform: scale(0.92) rotate(-2deg); opacity: 0.62; } 50% { transform: scale(1.06) rotate(3deg); opacity: 1; } }
+@keyframes auraFlame { 0% { transform: translateY(16px) scale(0.55); opacity: 0; } 22% { opacity: 1; } 72% { opacity: 0.8; } 100% { transform: translateY(-68px) scale(0.12) rotate(8deg); opacity: 0; } }
+@keyframes auraWindRing { to { transform: rotate(360deg); } }
+@keyframes auraWindCounter { to { transform: rotate(-360deg) scale(1.08); } }
+@keyframes auraPetalWind { 0% { transform: translate(-8px, 15px) rotate(0) scale(0.4); opacity: 0; } 24% { opacity: 1; } 65% { opacity: 0.82; } 100% { transform: translate(31px, -29px) rotate(270deg) scale(1.05); opacity: 0; } }
+@keyframes auraGoldRing { 0%, 100% { filter: brightness(0.9); transform: scale(0.97); } 45% { filter: brightness(1.65); transform: scale(1.04); } 52% { filter: brightness(2.1); } }
+@keyframes auraGoldRays { to { transform: rotate(360deg); } }
+@keyframes auraGoldGlint { 0%, 100% { transform: scale(0.3) rotate(0); opacity: 0; } 45%, 58% { transform: scale(1.5) rotate(45deg); opacity: 1; } }
+@keyframes auraEarthBreath { 0%, 100% { transform: scale(0.95); filter: saturate(0.85); } 50% { transform: scale(1.04); filter: saturate(1.4) brightness(1.2); } }
+@keyframes auraLeaf { 0% { transform: translate(-5px, 20px) rotate(-30deg) scale(0.5); opacity: 0; } 22% { opacity: 1; } 100% { transform: translate(18px, -35px) rotate(210deg) scale(1); opacity: 0; } }
+@keyframes auraArcaneRing { to { transform: rotate(360deg); filter: hue-rotate(40deg); } }
+@keyframes auraArcaneCounter { to { transform: rotate(-360deg); } }
+@keyframes auraRune { 0%, 100% { transform: rotate(45deg) scale(0.55); opacity: 0.18; } 48% { transform: rotate(135deg) scale(1.12); opacity: 1; filter: brightness(1.6); } }
+@keyframes auraGreenRing { 0%, 100% { transform: translate(0) scale(0.96); filter: brightness(0.9); } 35% { transform: translate(2px, -1px) scale(1.03); filter: brightness(1.6); } 68% { transform: translate(-2px, 1px) scale(0.99); } }
+@keyframes auraGreenCore { to { transform: rotate(360deg) scale(1.08); } }
+@keyframes auraGreenEnergy { 0% { transform: translateY(20px) rotate(12deg) scaleY(0.45); opacity: 0; } 32% { opacity: 1; } 100% { transform: translate(-5px, -34px) rotate(190deg) scaleY(1.25); opacity: 0; } }
+@keyframes auraPlasmaRing { 0%, 100% { transform: translate(0) scale(0.97); filter: brightness(1); } 25% { transform: translate(2px, -1px) scale(1.02); filter: brightness(1.7); } 65% { transform: translate(-2px, 1px) scale(1); } }
+@keyframes auraPlasmaCore { to { transform: rotate(360deg); } }
+@keyframes auraBolt { 0%, 17%, 22%, 64%, 69%, 100% { transform: translateY(9px) scale(0.45); opacity: 0; } 19%, 66% { transform: translateY(-8px) scale(1.2); opacity: 1; filter: brightness(2); } }
+@keyframes auraCosmicRing { to { transform: rotate(360deg); filter: hue-rotate(360deg) drop-shadow(0 0 14px #78ffe9); } }
+@keyframes auraCosmicRays { to { transform: rotate(360deg) scale(1.08); } }
+@keyframes auraCosmicStar { 0%, 100% { transform: scale(0.25) rotate(0); opacity: 0; } 40%, 58% { transform: scale(1.45) rotate(90deg); opacity: 1; filter: hue-rotate(150deg) brightness(1.7); } }
+@keyframes bossEyeFlash { 0%, 100% { transform: scale(0.82); filter: drop-shadow(0 0 3px #70ffe7); } 50% { transform: scale(1.18) rotate(45deg); filter: drop-shadow(0 0 9px #fff36a); } }
 @keyframes cupAuraPulse { 0%, 100% { transform: scale(0.88); filter: brightness(0.8); } 50% { transform: scale(1.05); filter: brightness(1.35); } }
 @keyframes cupAuraFinal { 0%, 100% { transform: scale(0.92); filter: hue-rotate(0deg) brightness(1); } 50% { transform: scale(1.07); filter: hue-rotate(180deg) brightness(1.45); } }
 @keyframes finalCupShift { to { background-position: 320% 0; } }
@@ -3862,9 +4151,24 @@ select.comic-border:hover {
   .clicker-brand-mark span { display: none; }
   .world-chip { font-size: 0.58rem; }
   .coinfe-chip { padding: 0.35rem 0.45rem; }
+  .brew-heading { gap: 0.4rem; }
+  .brew-heading > div:first-child { min-width: 0; }
+  .brew-heading h2 { overflow: hidden; font-size: 0.86rem; text-overflow: ellipsis; white-space: nowrap; }
+  .brew-kicker { font-size: 0.5rem; }
+  .brew-heading-status { gap: 0.25rem; }
+  .brew-level-chip { min-width: 52px; gap: 0.2rem; padding: 0.25rem 0.32rem; }
+  .brew-level-chip small { font-size: 0.4rem; }
+  .brew-level-chip strong { font-size: 1.08rem; }
+  .brew-rate { padding: 0.3rem 0.35rem; font-size: 0.62rem; }
   .game-stats > div { padding: 0.55rem 0.25rem; }
   .game-stats strong { font-size: 0.95rem; }
   .brew-stage { min-height: 290px; }
+  .stage-nameplate { top: 8px; left: 8px; max-width: 52%; padding: 0.35rem 0.45rem; }
+  .stage-nameplate svg { width: 16px; height: 16px; }
+  .stage-level-display { top: 8px; right: 8px; width: 108px; padding: 0.35rem 0.4rem; }
+  .stage-level-display > strong { font-size: 1.75rem; }
+  .stage-level-display > b { font-size: 0.43rem; }
+  .stage-level-display > small { font-size: 0.37rem; }
   .brew-button { transform: scale(0.88); }
   .pixel-grinder { left: 2%; transform: scale(0.8); transform-origin: bottom left; }
   .pro-machine { right: 2%; transform: scale(0.8); transform-origin: bottom right; }
@@ -3874,7 +4178,7 @@ select.comic-border:hover {
   .milk-buddy, .bean-buddy { transform: scale(0.82); }
   .cloud-buddy, .koi-buddy, .quetzal-buddy, .mushroom-buddy, .star-buddy { scale: 0.76; }
   .cloud-buddy { left: 1%; top: 23%; }
-  .koi-buddy { right: 2%; top: 20%; }
+  .koi-buddy { right: 2%; top: 35%; }
   .quetzal-buddy { left: 2%; bottom: 6%; }
   .mushroom-buddy { right: 23%; bottom: 8%; }
   .star-buddy { left: 22%; top: 12%; }
@@ -4494,6 +4798,13 @@ select.comic-border:hover {
 @media (prefers-reduced-motion: reduce) {
   .clicker-login *, .clicker-login *::before, .clicker-login *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
   [class*='rank-'], [class*='rank-']::before, [class*='rank-']::after, [class*='rank-'] .profile-external-border { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+  .brew-level-chip,
+  .stage-level-display,
+  .brew-cup,
+  .cup-aura,
+  .cup-aura *,
+  .cup-face *,
+  .cup-sparkles * { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
 }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }

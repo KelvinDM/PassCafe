@@ -15,8 +15,11 @@ defineProps({
   isSkillUnlocked: { type: Function, required: true },
   levelProgress: { type: Number, required: true },
   levelTarget: { type: Number, required: true },
+  rebirthBillionBonus: { type: Number, required: true },
+  rebirthBillions: { type: Number, required: true },
   rebirthConfirming: { type: Boolean, required: true },
   rebirthLevel: { type: Number, required: true },
+  rebirthNextBillionTarget: { type: Number, required: true },
   rebirthProgress: { type: Number, required: true },
   rebirthReward: { type: Number, required: true },
   rebirths: { type: Number, required: true },
@@ -28,6 +31,27 @@ defineProps({
 })
 
 defineEmits(['brew', 'buy-upgrade', 'buy-skill', 'rebirth', 'update-shop-view'])
+
+const LEVEL_PERSONAS = Object.freeze([
+  { aura: 'CALOR DO EXPRESSO', face: 'SORRISO CLÁSSICO' },
+  { aura: 'MARÉ AZUL', face: 'KAWAII' },
+  { aura: 'FOGO DO OÁSIS', face: 'MODO FÚRIA' },
+  { aura: 'VENTO SAKURA', face: 'POKER FACE' },
+  { aura: 'OURO DOS FARAÓS', face: 'MEWING DOURADO' },
+  { aura: 'FORÇA DA TERRA', face: 'MODO ZEN' },
+  { aura: 'ARCANO VIOLETA', face: 'SIDE EYE' },
+  { aura: 'ENERGIA VERDE', face: 'CAOS CAFEINADO' },
+  { aura: 'PLASMA LUNAR', face: 'CHOQUE TOTAL' },
+  { aura: 'COSMOS INFINITO', face: 'BOSS FINAL' }
+])
+
+function levelPersona(level) {
+  return LEVEL_PERSONAS[Math.min(LEVEL_PERSONAS.length - 1, Math.max(0, Number(level) - 1))]
+}
+
+function formatLevel(level) {
+  return String(Math.max(1, Math.floor(Number(level) || 1))).padStart(2, '0')
+}
 
 function formatGameNumber(value) {
   const amount = Math.floor(Number(value) || 0)
@@ -45,7 +69,10 @@ function formatGameNumber(value) {
         <span class="brew-kicker">{{ currentWorld.name }}</span>
         <h2>ESTAÇÃO DE PREPARO</h2>
       </div>
-      <span class="brew-rate">+{{ formatGameNumber(autoBrew) }}/s</span>
+      <div class="brew-heading-status">
+        <span :key="`heading-level-${clickerLevel}`" class="brew-level-chip"><small>NÍVEL</small><strong>{{ formatLevel(clickerLevel) }}</strong></span>
+        <span class="brew-rate">+{{ formatGameNumber(autoBrew) }}/s</span>
+      </div>
     </div>
 
     <div class="game-stats">
@@ -72,6 +99,12 @@ function formatGameNumber(value) {
         <Icon icon="pixelarticons:map" />
         <span><small>DESTINO NV. {{ Math.min(clickerLevel, 10) }}</small><b>{{ currentWorld.label }}</b></span>
       </div>
+      <div :key="`level-display-${clickerLevel}`" class="stage-level-display" aria-live="polite">
+        <span>GAME LEVEL</span>
+        <strong>{{ formatLevel(clickerLevel) }}</strong>
+        <b>{{ levelPersona(clickerLevel).aura }}</b>
+        <small>{{ levelPersona(clickerLevel).face }}</small>
+      </div>
       <div v-if="clickerUpgrades[1].owned" class="barista-bot" aria-hidden="true"><i></i><b></b></div>
       <div v-if="clickerUpgrades[0].owned" class="pixel-grinder" aria-hidden="true"><i></i></div>
       <div v-if="clickerUpgrades[3].owned" class="pro-machine" aria-hidden="true"><i></i><b></b></div>
@@ -92,7 +125,11 @@ function formatGameNumber(value) {
         :aria-label="`Preparar café no nível ${clickerLevel}`"
         @click="$emit('brew', $event)"
       >
-        <span class="cup-aura" aria-hidden="true"></span>
+        <span :key="`aura-${clickerLevel}`" class="cup-aura" aria-hidden="true">
+          <b class="aura-ring"></b>
+          <em class="aura-emblem"></em>
+          <i v-for="auraParticle in 12" :key="auraParticle"></i>
+        </span>
         <span class="cup-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
         <span class="cup-steam steam-a"></span>
         <span class="cup-steam steam-b"></span>
@@ -191,11 +228,16 @@ function formatGameNumber(value) {
         <strong v-else>NÍVEL {{ rebirthLevel }}</strong>
       </div>
       <div class="rebirth-bar"><i :style="{ width: `${rebirthProgress}%` }"></i></div>
+      <div v-if="canRebirth" class="rebirth-farm-status">
+        <span><Icon icon="pixelarticons:coin" /> {{ rebirthBillions }} bilh{{ rebirthBillions === 1 ? 'ão' : 'ões' }} contabilizado{{ rebirthBillions === 1 ? '' : 's' }}</span>
+        <strong>+{{ rebirthBillionBonus }} CF de farm</strong>
+        <small>Próximo +1 CoinFé em {{ formatGameNumber(Math.max(0, rebirthNextBillionTarget - totalBrewed)) }} cafés</small>
+      </div>
       <button type="button" class="rebirth-button" :class="{ confirming: rebirthConfirming }" @click="$emit('rebirth')">
         <Icon :icon="canRebirth ? 'pixelarticons:repeat' : 'pixelarticons:lock'" />
         {{ rebirthConfirming ? 'CONFIRMAR RENASCIMENTO' : canRebirth ? 'RENASCER AGORA' : `DESBLOQUEIA NO NÍVEL ${rebirthLevel}` }}
       </button>
-      <small class="rebirth-rule">Reinicia somente a rodada do game. Perfil, renascimentos, habilidades e CoinFés são permanentes. Perfil: +5 por mensalidade, +1 por renascimento e +1 a cada 10 níveis máximos do game.</small>
+      <small class="rebirth-rule">Reinicia somente a rodada do game. Perfil, renascimentos, habilidades e CoinFés são permanentes. Cada bilhão adicional produzido antes de renascer concede +1 CoinFé.</small>
     </div>
 
     <div class="shop-tip">

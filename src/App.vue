@@ -320,10 +320,16 @@ const achievements = computed(() => ACHIEVEMENT_CATALOG.map((achievement) => {
 const unlockedAchievementCount = computed(() => unlockedAchievementIds.value.size)
 const canRebirth = computed(() => clickerLevel.value >= REBIRTH_LEVEL)
 const rebirthSkillBonus = computed(() => skillTree.reduce((total, skill) => total + ((skill.rebirthBonus || 0) * skill.level), 0))
+const rebirthBillions = computed(() => Math.floor(totalBrewed.value / REBIRTH_THRESHOLD))
+const rebirthBillionBonus = computed(() => Math.max(0, rebirthBillions.value - 1))
 const rebirthReward = computed(() => canRebirth.value
-  ? 2 + rebirths.value + Math.floor((clickerLevel.value - REBIRTH_LEVEL) / 3) + rebirthSkillBonus.value
+  ? 2 + rebirths.value + Math.floor((clickerLevel.value - REBIRTH_LEVEL) / 3) + rebirthSkillBonus.value + rebirthBillionBonus.value
   : 0)
-const rebirthProgress = computed(() => Math.min(100, (totalBrewed.value / REBIRTH_THRESHOLD) * 100))
+const rebirthProgress = computed(() => {
+  if (!canRebirth.value) return Math.min(100, (totalBrewed.value / REBIRTH_THRESHOLD) * 100)
+  return ((totalBrewed.value % REBIRTH_THRESHOLD) / REBIRTH_THRESHOLD) * 100
+})
+const rebirthNextBillionTarget = computed(() => (rebirthBillions.value + 1) * REBIRTH_THRESHOLD)
 const filteredMembers = computed(() => {
   const search = searchMember.value.trim().toLowerCase()
   return members.value.filter((member) => {
@@ -1877,8 +1883,11 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
           :is-skill-unlocked="isSkillUnlocked"
           :level-progress="levelProgress"
           :level-target="levelTarget"
+          :rebirth-billion-bonus="rebirthBillionBonus"
+          :rebirth-billions="rebirthBillions"
           :rebirth-confirming="rebirthConfirming"
           :rebirth-level="REBIRTH_LEVEL"
+          :rebirth-next-billion-target="rebirthNextBillionTarget"
           :rebirth-progress="rebirthProgress"
           :rebirth-reward="rebirthReward"
           :rebirths="rebirths"
@@ -2074,8 +2083,11 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
             :is-skill-unlocked="isSkillUnlocked"
             :level-progress="levelProgress"
             :level-target="levelTarget"
+            :rebirth-billion-bonus="rebirthBillionBonus"
+            :rebirth-billions="rebirthBillions"
             :rebirth-confirming="rebirthConfirming"
             :rebirth-level="REBIRTH_LEVEL"
+            :rebirth-next-billion-target="rebirthNextBillionTarget"
             :rebirth-progress="rebirthProgress"
             :rebirth-reward="rebirthReward"
             :rebirths="rebirths"
