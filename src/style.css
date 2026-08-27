@@ -1175,25 +1175,6 @@ select.comic-border:hover {
   height: 15px;
 }
 
-.achievement-action-count {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  min-width: 16px;
-  height: 16px;
-  display: grid;
-  place-items: center;
-  padding: 0 3px;
-  border: 2px solid #1f120b;
-  border-radius: 999px;
-  background: #ef4444;
-  color: #fffdf9;
-  font-family: 'Space Grotesk', monospace;
-  font-size: 0.48rem;
-  font-weight: 900;
-  line-height: 1;
-}
-
 .account-logout {
   width: 85px;
   height: 26px;

@@ -1927,7 +1927,6 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
                   @click="switchTab('achievements')"
                 >
                   <Icon icon="pixelarticons:trophy" />
-                  <span v-if="unlockedAchievementCount" class="achievement-action-count">{{ unlockedAchievementCount }}</span>
                 </button>
                 <button type="button" class="account-logout" title="Sair da conta" aria-label="Sair da conta" @click="lockAdmin">
                   <Icon icon="pixelarticons:logout" />
