@@ -76,8 +76,21 @@ const LOGIN_SATIRE_PHRASES = [
 ]
 
 const REBIRTH_LEVEL = 10
+const LEVEL_TOTAL_REQUIREMENTS = Object.freeze([
+  0,
+  500,
+  5_000,
+  25_000,
+  100_000,
+  500_000,
+  5_000_000,
+  50_000_000,
+  250_000_000,
+  1_000_000_000
+])
+const POST_FINAL_LEVEL_MULTIPLIER = 2
 const CLICKER_AUTO_SAVE_INTERVAL = 30 * 60 * 1000
-const REBIRTH_THRESHOLD = 45 * Math.pow(REBIRTH_LEVEL - 1, 2)
+const REBIRTH_THRESHOLD = coffeeThresholdForLevel(REBIRTH_LEVEL)
 const ACHIEVEMENT_IDS = new Set(ACHIEVEMENT_CATALOG.map((achievement) => achievement.id))
 const CLICKER_UPGRADE_CATALOG = [
   { id: 'grinder', name: 'Moedor turbo', description: '+1 por clique', icon: 'pixelarticons:speed-fast', baseCost: 25, clickBonus: 1, autoBonus: 0 },
@@ -107,11 +120,16 @@ const SKILL_TREE_CATALOG = [
 ]
 
 const WORLD_STAGES = [
-  { name: 'Turno da madrugada', label: 'MADRUGADA', className: 'world-night' },
-  { name: 'Primeiro expresso', label: 'AMANHECER', className: 'world-dawn' },
-  { name: 'Cafeteria aberta', label: 'EXPEDIENTE', className: 'world-day' },
-  { name: 'Hora do cafezinho', label: 'HORA DOURADA', className: 'world-sunset' },
-  { name: 'Plantão neon', label: 'MODO NEON', className: 'world-neon' }
+  { name: 'Café do Amanhecer', label: 'CAFETERIA CARIOCA', className: 'world-dawn', stageClass: 'stage-cafe', background: '/backgrounds/level-01-cafe-amanhecer.png' },
+  { name: 'Brisa de Coco', label: 'PRAIA TROPICAL', className: 'world-beach', stageClass: 'stage-beach', background: '/backgrounds/level-02-praia-tropical.png' },
+  { name: 'Expresso do Oásis', label: 'DESERTO DOURADO', className: 'world-desert', stageClass: 'stage-desert', background: '/backgrounds/level-03-oasis-deserto.png' },
+  { name: 'Sakura Latte', label: 'TEMPLO DAS CEREJEIRAS', className: 'world-sakura', stageClass: 'stage-sakura', background: '/backgrounds/level-04-templo-sakura.png' },
+  { name: 'Grão dos Faraós', label: 'EGITO ANTIGO', className: 'world-egypt', stageClass: 'stage-egypt', background: '/backgrounds/level-05-egito-antigo.png' },
+  { name: 'Café nas Nuvens', label: 'MACHU PICCHU', className: 'world-inca', stageClass: 'stage-inca', background: '/backgrounds/level-06-machu-picchu.png' },
+  { name: 'Alquimia da Torra', label: 'CASTELO ALQUIMISTA', className: 'world-castle', stageClass: 'stage-castle', background: '/backgrounds/level-07-castelo-alquimista.png' },
+  { name: 'Néctar Encantado', label: 'FLORESTA BIOLUMINESCENTE', className: 'world-forest', stageClass: 'stage-forest', background: '/backgrounds/level-08-floresta-magica.png' },
+  { name: 'Dose Lunar', label: 'BASE NA LUA', className: 'world-moon', stageClass: 'stage-moon', background: '/backgrounds/level-09-base-lunar.png' },
+  { name: 'Cafezord Infinito', label: 'BORDA DO UNIVERSO', className: 'world-cosmos', stageClass: 'stage-cosmos', background: '/backgrounds/level-10-borda-universo.png' }
 ]
 
 const MEMBER_LEVEL_TITLES = [
@@ -269,13 +287,13 @@ const criticalChance = computed(() => Math.min(0.4, skillTree.reduce((total, ski
 const clickPower = computed(() => (1 + clickerUpgrades.reduce((total, upgrade) => total + (upgrade.clickBonus * upgrade.owned), 0)) * clickSkillMultiplier.value * permanentMultiplier.value)
 const autoBrew = computed(() => clickerUpgrades.reduce((total, upgrade) => total + (upgrade.autoBonus * upgrade.owned), 0) * autoSkillMultiplier.value * permanentMultiplier.value)
 const clickerLevel = computed(() => gameLevelForTotal(totalBrewed.value))
-const levelStart = computed(() => 45 * Math.pow(clickerLevel.value - 1, 2))
-const levelTarget = computed(() => 45 * Math.pow(clickerLevel.value, 2))
+const levelStart = computed(() => coffeeThresholdForLevel(clickerLevel.value))
+const levelTarget = computed(() => coffeeThresholdForLevel(clickerLevel.value + 1))
 const levelProgress = computed(() => {
   const range = levelTarget.value - levelStart.value
   return Math.min(100, Math.max(0, ((totalBrewed.value - levelStart.value) / range) * 100))
 })
-const currentWorld = computed(() => WORLD_STAGES[Math.min(WORLD_STAGES.length - 1, Math.floor((clickerLevel.value - 1) / 3))])
+const currentWorld = computed(() => WORLD_STAGES[Math.min(WORLD_STAGES.length - 1, clickerLevel.value - 1)])
 const worldClass = computed(() => currentWorld.value.className)
 const signedInUserName = computed(() => (
   currentUser.value?.displayName?.trim() || currentUser.value?.email?.split('@')[0] || ''
@@ -673,13 +691,39 @@ async function saveClickerProgressManually() {
 
 function formatGameNumber(value) {
   const amount = Math.floor(Number(value) || 0)
+  if (amount >= 1_000_000_000) return `${(amount / 1_000_000_000).toFixed(1)}B`
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`
   if (amount >= 1_000) return `${(amount / 1_000).toFixed(1)}K`
   return amount.toLocaleString('pt-BR')
 }
 
+function coffeeThresholdForLevel(level) {
+  const normalizedLevel = Math.max(1, Math.floor(Number(level) || 1))
+
+  if (normalizedLevel <= LEVEL_TOTAL_REQUIREMENTS.length) {
+    return LEVEL_TOTAL_REQUIREMENTS[normalizedLevel - 1]
+  }
+
+  return Math.round(
+    LEVEL_TOTAL_REQUIREMENTS.at(-1) *
+    Math.pow(POST_FINAL_LEVEL_MULTIPLIER, normalizedLevel - LEVEL_TOTAL_REQUIREMENTS.length)
+  )
+}
+
 function gameLevelForTotal(total) {
-  return Math.floor(Math.sqrt(Math.max(0, Number(total) || 0) / 45)) + 1
+  const brewed = Math.max(0, Number(total) || 0)
+  const finalRequirement = LEVEL_TOTAL_REQUIREMENTS.at(-1)
+
+  if (brewed >= finalRequirement) {
+    return LEVEL_TOTAL_REQUIREMENTS.length + Math.floor(
+      Math.log(brewed / finalRequirement) / Math.log(POST_FINAL_LEVEL_MULTIPLIER)
+    )
+  }
+
+  let level = 1
+  while (brewed >= coffeeThresholdForLevel(level + 1)) level += 1
+
+  return level
 }
 
 function achievementCurrentValue(metric) {

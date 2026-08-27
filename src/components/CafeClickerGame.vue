@@ -31,6 +31,7 @@ defineEmits(['brew', 'buy-upgrade', 'buy-skill', 'rebirth', 'update-shop-view'])
 
 function formatGameNumber(value) {
   const amount = Math.floor(Number(value) || 0)
+  if (amount >= 1_000_000_000) return `${(amount / 1_000_000_000).toFixed(1)}B`
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`
   if (amount >= 1_000) return `${(amount / 1_000).toFixed(1)}K`
   return amount.toLocaleString('pt-BR')
@@ -53,20 +54,53 @@ function formatGameNumber(value) {
       <div><span>PRODUZIDOS</span><strong>{{ formatGameNumber(totalBrewed) }}</strong></div>
     </div>
 
-    <div class="brew-stage">
+    <div
+      class="brew-stage"
+      :class="[currentWorld.stageClass, `stage-level-${Math.min(clickerLevel, 10)}`]"
+    >
+      <img
+        :key="currentWorld.background"
+        class="stage-backdrop"
+        :src="currentWorld.background"
+        alt=""
+        aria-hidden="true"
+      >
+      <div class="stage-atmosphere" aria-hidden="true">
+        <i v-for="particle in 12" :key="particle"></i>
+      </div>
+      <div class="stage-nameplate" aria-hidden="true">
+        <Icon icon="pixelarticons:map" />
+        <span><small>DESTINO NV. {{ Math.min(clickerLevel, 10) }}</small><b>{{ currentWorld.label }}</b></span>
+      </div>
       <div v-if="clickerUpgrades[1].owned" class="barista-bot" aria-hidden="true"><i></i><b></b></div>
       <div v-if="clickerUpgrades[0].owned" class="pixel-grinder" aria-hidden="true"><i></i></div>
       <div v-if="clickerUpgrades[3].owned" class="pro-machine" aria-hidden="true"><i></i><b></b></div>
+      <div v-if="clickerLevel >= 2" class="level-companion cloud-buddy" title="Pingo - desbloqueado no nível 2"><i></i><b></b></div>
+      <div v-if="clickerLevel >= 4" class="level-companion koi-buddy" title="Koi - desbloqueada no nível 4"><i></i><b></b><em></em></div>
+      <div v-if="clickerLevel >= 6" class="level-companion quetzal-buddy" title="Quetzal - desbloqueado no nível 6"><i></i><b></b><em></em></div>
+      <div v-if="clickerLevel >= 8" class="level-companion mushroom-buddy" title="Cogumelo-luz - desbloqueado no nível 8"><i></i><b></b></div>
+      <div v-if="clickerLevel >= 10" class="level-companion star-buddy" title="Estelinha - desbloqueada no nível 10"><i></i><b></b></div>
       <div v-if="clickerLevel >= 3" class="level-companion sugar-buddy" title="Cubinho - desbloqueado no nível 3"><i></i><b></b></div>
       <div v-if="clickerLevel >= 5" class="level-companion cookie-buddy" title="Biscoito - desbloqueado no nível 5"><i></i><b></b><em></em></div>
       <div v-if="clickerLevel >= 7" class="level-companion milk-buddy" title="Leitinho - desbloqueado no nível 7"><i></i><b></b></div>
       <div v-if="clickerLevel >= 9" class="level-companion bean-buddy" title="Grãozinho - desbloqueado no nível 9"><i></i><b></b></div>
       <div v-if="clickerLevel >= 12" class="level-companion donut-buddy" title="Donut - desbloqueado no nível 12"><i></i><b></b></div>
-      <button type="button" class="brew-button" aria-label="Preparar café" @click="$emit('brew', $event)">
+      <button
+        type="button"
+        class="brew-button"
+        :class="[`cup-level-${Math.min(clickerLevel, 10)}`, { 'cup-ascended': clickerLevel >= 10 }]"
+        :aria-label="`Preparar café no nível ${clickerLevel}`"
+        @click="$emit('brew', $event)"
+      >
+        <span class="cup-aura" aria-hidden="true"></span>
+        <span class="cup-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
         <span class="cup-steam steam-a"></span>
         <span class="cup-steam steam-b"></span>
         <span class="cup-steam steam-c"></span>
-        <span class="brew-cup"><Icon icon="pixelarticons:coffee" /></span>
+        <span :key="clickerLevel" class="brew-cup">
+          <span class="cup-face" aria-hidden="true"><i></i><b></b><em></em></span>
+          <Icon icon="pixelarticons:coffee-alt" />
+        </span>
         <span class="tap-label">CLIQUE PARA PREPARAR</span>
         <span
           v-for="burst in clickBursts"
