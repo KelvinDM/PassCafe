@@ -218,6 +218,116 @@ service cloud.firestore {
         && request.resource.data.createdAt is string;
     }
 
+    function isValidClickerUpgrades() {
+      return request.resource.data.upgrades is map
+        && request.resource.data.upgrades.keys().hasOnly([
+          'grinder',
+          'barista',
+          'double',
+          'machine',
+          'thermal',
+          'delivery',
+          'legendary',
+          'franchise',
+          'tide-press',
+          'tropical-kiosk',
+          'volcanic-roast',
+          'aroma-plant',
+          'arabica-garden',
+          'barista-swarm',
+          'capsule-vault',
+          'franchise-hub',
+          'lost-bean-route',
+          'caffeinated-fleet',
+          'cloud-farm',
+          'roast-crystal',
+          'pharaoh-crown',
+          'espresso-transmitter',
+          'caffeine-battery',
+          'world-market',
+          'lunar-harvest',
+          'alchemic-board',
+          'order-server',
+          'barista-network',
+          'espresso-blade',
+          'thermal-shield',
+          'grinding-spell',
+          'cafezord-elixir',
+          'aroma-hourglass',
+          'quantum-clock',
+          'stellar-spark',
+          'bean-constellation',
+          'barista-eye',
+          'decaf-skull',
+          'galactic-trophy',
+          'supreme-target',
+          'coinfe-treasure',
+          'limitless-card',
+          'coffee-megacity',
+          'roast-tower',
+          'production-cloud',
+          'aromatic-database',
+          'extraction-loop',
+          'universal-sync',
+          'caffeine-sun',
+          'espresso-moon',
+          'multiverse-gift',
+          'eternity-blocks'
+        ])
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('grinder', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('barista', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('double', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('machine', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('thermal', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('delivery', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('legendary', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('franchise', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('tide-press', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('tropical-kiosk', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('volcanic-roast', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('aroma-plant', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('arabica-garden', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('barista-swarm', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('capsule-vault', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('franchise-hub', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('lost-bean-route', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('caffeinated-fleet', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('cloud-farm', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('roast-crystal', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('pharaoh-crown', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('espresso-transmitter', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('caffeine-battery', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('world-market', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('lunar-harvest', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('alchemic-board', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('order-server', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('barista-network', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('espresso-blade', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('thermal-shield', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('grinding-spell', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('cafezord-elixir', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('aroma-hourglass', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('quantum-clock', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('stellar-spark', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('bean-constellation', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('barista-eye', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('decaf-skull', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('galactic-trophy', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('supreme-target', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('coinfe-treasure', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('limitless-card', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('coffee-megacity', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('roast-tower', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('production-cloud', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('aromatic-database', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('extraction-loop', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('universal-sync', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('caffeine-sun', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('espresso-moon', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('multiverse-gift', null))
+        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('eternity-blocks', null));
+    }
+
     function isValidClickerSave(userId) {
       return request.auth != null
         && request.auth.uid == userId
@@ -244,16 +354,7 @@ service cloud.firestore {
         && request.resource.data.criticalClicks is number
         && request.resource.data.criticalClicks >= 0
         && request.resource.data.criticalClicks <= request.resource.data.manualClicks
-        && request.resource.data.upgrades is map
-        && request.resource.data.upgrades.keys().hasOnly(['grinder', 'barista', 'double', 'machine', 'thermal', 'delivery', 'legendary', 'franchise'])
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.grinder)
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.barista)
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.double)
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.machine)
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.thermal)
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.delivery)
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.legendary)
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.franchise)
+        && isValidClickerUpgrades()
         && request.resource.data.skills is map
         && request.resource.data.skills.keys().hasOnly(['origin', 'rapid', 'automatic', 'supplier', 'critical', 'temporal', 'precision', 'roastery', 'nightshift', 'network', 'warehouse', 'pilgrimage', 'legacy'])
         && isOptionalNonNegativeNumber(request.resource.data.skills.origin)

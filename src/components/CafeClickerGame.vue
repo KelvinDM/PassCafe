@@ -1,5 +1,6 @@
 <script setup>
 import { Icon } from '@iconify/vue'
+import { formatGameNumber } from '../utils/formatGameNumber'
 
 defineProps({
   autoBrew: { type: Number, required: true },
@@ -45,6 +46,16 @@ const LEVEL_PERSONAS = Object.freeze([
   { aura: 'COSMOS INFINITO', face: 'BOSS FINAL' }
 ])
 
+const UPGRADE_TIER_LABELS = Object.freeze({
+  starter: 'INICIANTE',
+  artisan: 'ARTESANAL',
+  relic: 'RELÍQUIA',
+  mythic: 'MÍTICO',
+  stellar: 'ESTELAR',
+  cosmic: 'CÓSMICO',
+  infinite: 'INFINITO'
+})
+
 function levelPersona(level) {
   return LEVEL_PERSONAS[Math.min(LEVEL_PERSONAS.length - 1, Math.max(0, Number(level) - 1))]
 }
@@ -53,13 +64,17 @@ function formatLevel(level) {
   return String(Math.max(1, Math.floor(Number(level) || 1))).padStart(2, '0')
 }
 
-function formatGameNumber(value) {
-  const amount = Math.floor(Number(value) || 0)
-  if (amount >= 1_000_000_000) return `${(amount / 1_000_000_000).toFixed(1)}B`
-  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`
-  if (amount >= 1_000) return `${(amount / 1_000).toFixed(1)}K`
-  return amount.toLocaleString('pt-BR')
+function upgradeTierLabel(upgrade) {
+  return UPGRADE_TIER_LABELS[upgrade.tier] || 'ESPECIAL'
 }
+
+function upgradeEffectLabel(upgrade) {
+  if (upgrade.globalBonus) return `MULTI +${Math.round(upgrade.globalBonus * 100)}%`
+  if (upgrade.clickBonus && upgrade.autoBonus) return 'CLIQUE + AUTO'
+  if (upgrade.autoBonus) return `AUTO +${formatGameNumber(upgrade.autoBonus)}/s`
+  return `CLIQUE +${formatGameNumber(upgrade.clickBonus)}`
+}
+
 </script>
 
 <template>
@@ -159,7 +174,7 @@ function formatGameNumber(value) {
   <aside class="upgrade-shop">
     <div class="shop-heading">
       <div>
-        <span>{{ shopView === 'upgrades' ? 'POWER-UPS' : 'PROGRESSO PERMANENTE' }}</span>
+        <span>{{ shopView === 'upgrades' ? `POWER-UPS · ${clickerUpgrades.length} ITENS` : 'PROGRESSO PERMANENTE' }}</span>
         <h2>{{ shopView === 'upgrades' ? 'LOJA DE UPGRADES' : 'ÁRVORE DE HABILIDADES' }}</h2>
       </div>
       <Icon :icon="shopView === 'upgrades' ? 'pixelarticons:shopping-bag' : 'pixelarticons:tree'" />
@@ -181,13 +196,14 @@ function formatGameNumber(value) {
         :key="upgrade.id"
         type="button"
         class="upgrade-button"
-        :class="{ 'can-buy': coffeeCoins >= upgradeCost(upgrade) }"
+        :class="[`tier-${upgrade.tier}`, `type-${upgrade.type}`, { 'can-buy': coffeeCoins >= upgradeCost(upgrade) }]"
         @click="$emit('buy-upgrade', upgrade)"
       >
         <span class="upgrade-icon"><Icon :icon="upgrade.icon" /></span>
         <span class="upgrade-info">
           <strong>{{ upgrade.name }}</strong>
           <small>{{ upgrade.description }}</small>
+          <span class="upgrade-meta"><b>{{ upgradeTierLabel(upgrade) }}</b><em>{{ upgradeEffectLabel(upgrade) }}</em></span>
         </span>
         <span class="upgrade-price">
           <b>{{ formatGameNumber(upgradeCost(upgrade)) }}</b>

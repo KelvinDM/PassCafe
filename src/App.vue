@@ -9,6 +9,8 @@ import FeatureIcon from './components/FeatureIcon.vue'
 import StatTile from './components/StatTile.vue'
 import AchievementGallery from './components/AchievementGallery.vue'
 import { ACHIEVEMENT_CATALOG } from './data/achievements'
+import { CLICKER_UPGRADE_CATALOG } from './data/clickerUpgrades'
+import { formatGameNumber } from './utils/formatGameNumber'
 import {
   acceptAdminInvite,
   changeAdminRole as changeRemoteAdminRole,
@@ -92,17 +94,6 @@ const POST_FINAL_LEVEL_MULTIPLIER = 2
 const CLICKER_AUTO_SAVE_INTERVAL = 30 * 60 * 1000
 const REBIRTH_THRESHOLD = coffeeThresholdForLevel(REBIRTH_LEVEL)
 const ACHIEVEMENT_IDS = new Set(ACHIEVEMENT_CATALOG.map((achievement) => achievement.id))
-const CLICKER_UPGRADE_CATALOG = [
-  { id: 'grinder', name: 'Moedor turbo', description: '+1 por clique', icon: 'pixelarticons:speed-fast', baseCost: 25, clickBonus: 1, autoBonus: 0 },
-  { id: 'barista', name: 'Barista bot', description: '+1 café por segundo', icon: 'pixelarticons:android', baseCost: 80, clickBonus: 0, autoBonus: 1 },
-  { id: 'double', name: 'Dose dupla', description: '+5 por clique', icon: 'pixelarticons:coffee', baseCost: 180, clickBonus: 5, autoBonus: 0 },
-  { id: 'machine', name: 'Cafeteira PRO', description: '+6 cafés por segundo', icon: 'pixelarticons:zap', baseCost: 420, clickBonus: 0, autoBonus: 6 },
-  { id: 'thermal', name: 'Copo térmico', description: '+18 por clique', icon: 'pixelarticons:briefcase', baseCost: 900, clickBonus: 18, autoBonus: 0 },
-  { id: 'delivery', name: 'Delivery expresso', description: '+22 cafés por segundo', icon: 'pixelarticons:truck', baseCost: 1650, clickBonus: 0, autoBonus: 22 },
-  { id: 'legendary', name: 'Grão lendário', description: '+65 por clique', icon: 'pixelarticons:star', baseCost: 3600, clickBonus: 65, autoBonus: 0 },
-  { id: 'franchise', name: 'Franquia orbital', description: '+75 cafés por segundo', icon: 'pixelarticons:building-community', baseCost: 8200, clickBonus: 0, autoBonus: 75 }
-]
-
 const SKILL_TREE_CATALOG = [
   { id: 'origin', name: 'Receita ancestral', description: '+10% em toda produção', icon: 'pixelarticons:coffee-alt', baseCost: 1, maxLevel: 1, branch: 'root', globalBonus: 0.1 },
   { id: 'rapid', name: 'Mãos de barista', description: '+25% de força no clique', icon: 'pixelarticons:human-handsup', baseCost: 1, maxLevel: 4, branch: 'click', requires: { id: 'origin', level: 1 }, clickBonus: 0.25 },
@@ -282,10 +273,11 @@ const permanentMultiplier = computed(() => {
 })
 const clickSkillMultiplier = computed(() => 1 + skillTree.reduce((total, skill) => total + ((skill.clickBonus || 0) * skill.level), 0))
 const autoSkillMultiplier = computed(() => 1 + skillTree.reduce((total, skill) => total + ((skill.autoBonus || 0) * skill.level), 0))
+const upgradeGlobalMultiplier = computed(() => 1 + clickerUpgrades.reduce((total, upgrade) => total + ((upgrade.globalBonus || 0) * upgrade.owned), 0))
 const upgradeDiscount = computed(() => Math.min(0.35, skillTree.reduce((total, skill) => total + ((skill.discountBonus || 0) * skill.level), 0)))
 const criticalChance = computed(() => Math.min(0.4, skillTree.reduce((total, skill) => total + ((skill.criticalBonus || 0) * skill.level), 0)))
-const clickPower = computed(() => (1 + clickerUpgrades.reduce((total, upgrade) => total + (upgrade.clickBonus * upgrade.owned), 0)) * clickSkillMultiplier.value * permanentMultiplier.value)
-const autoBrew = computed(() => clickerUpgrades.reduce((total, upgrade) => total + (upgrade.autoBonus * upgrade.owned), 0) * autoSkillMultiplier.value * permanentMultiplier.value)
+const clickPower = computed(() => (1 + clickerUpgrades.reduce((total, upgrade) => total + (upgrade.clickBonus * upgrade.owned), 0)) * clickSkillMultiplier.value * permanentMultiplier.value * upgradeGlobalMultiplier.value)
+const autoBrew = computed(() => clickerUpgrades.reduce((total, upgrade) => total + (upgrade.autoBonus * upgrade.owned), 0) * autoSkillMultiplier.value * permanentMultiplier.value * upgradeGlobalMultiplier.value)
 const clickerLevel = computed(() => gameLevelForTotal(totalBrewed.value))
 const levelStart = computed(() => coffeeThresholdForLevel(clickerLevel.value))
 const levelTarget = computed(() => coffeeThresholdForLevel(clickerLevel.value + 1))
@@ -693,14 +685,6 @@ async function saveClickerProgressManually() {
   if (!saved) return
   showToast('Save manual do clicker enviado para a nuvem.', 'success')
   playPowerUpSound()
-}
-
-function formatGameNumber(value) {
-  const amount = Math.floor(Number(value) || 0)
-  if (amount >= 1_000_000_000) return `${(amount / 1_000_000_000).toFixed(1)}B`
-  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`
-  if (amount >= 1_000) return `${(amount / 1_000).toFixed(1)}K`
-  return amount.toLocaleString('pt-BR')
 }
 
 function coffeeThresholdForLevel(level) {
