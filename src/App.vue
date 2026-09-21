@@ -11,6 +11,7 @@ import AchievementGallery from './components/AchievementGallery.vue'
 import { ACHIEVEMENT_CATALOG } from './data/achievements'
 import { CLICKER_UPGRADE_CATALOG } from './data/clickerUpgrades'
 import { formatGameNumber } from './utils/formatGameNumber'
+import { buildPixPayload, normalizePixKey } from './utils/pix'
 import {
   acceptAdminInvite,
   changeAdminRole as changeRemoteAdminRole,
@@ -37,6 +38,7 @@ import {
   updatePaymentRequest,
   watchMyAdminInvites,
   watchMyAdminProfile,
+  watchMembers,
   watchPaymentRequests
 } from './firebase'
 
@@ -231,6 +233,7 @@ const toasts = ref([])
 let unwatchPaymentRequests = () => {}
 let unwatchMyAdminInvites = () => {}
 let unwatchMyAdminProfile = () => {}
+let unwatchMembers = () => {}
 let paymentRequestsReady = false
 let funnyBannerTimer = null
 let clickerTimer = null
@@ -262,8 +265,16 @@ function selectPendingPaymentRequests(requests) {
 
   return [...unique.values()]
 }
-const pixPayload = computed(() => buildPixPayload())
-const qrUrl = computed(() => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixPayload.value)}&color=1F120B&bgcolor=FFFDF9`)
+const pixResult = computed(() => {
+  try {
+    return { payload: buildPixPayload(settings), error: '' }
+  } catch (error) {
+    return { payload: '', error: error.message }
+  }
+})
+const qrUrl = computed(() => pixResult.value.payload
+  ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(pixResult.value.payload)}&color=000000&bgcolor=FFFFFF&qzone=4`
+  : '')
 const adminUnlocked = computed(() => Boolean(adminUser.value))
 const signedInWithWrongAccount = computed(() => Boolean(currentUser.value && !adminUnlocked.value))
 const isSignedIn = computed(() => Boolean(currentUser.value))
@@ -365,10 +376,19 @@ onMounted(async () => {
     Object.assign(adminForm, loadedSettings)
     members.value = loadedMembers
   } catch (error) {
-    showToast('Não foi possível carregar os dados do Firestore.', 'error')
+    console.error('[PassCafe Remote Data]', remoteErrorDetails(error))
+    showToast('Não foi possível carregar os dados remotos.', 'error')
   } finally {
     loading.value = false
   }
+
+  unwatchMembers = watchMembers(
+    (remoteMembers) => { members.value = remoteMembers },
+    (error) => {
+      console.error('[PassCafe Remote Members]', remoteErrorDetails(error))
+      showToast('Não foi possível sincronizar a lista de cafeinados.', 'error')
+    }
+  )
 
   funnyBannerTimer = window.setInterval(() => {
     funnyBanner.value = FUNNY_BANNERS[Math.floor(Math.random() * FUNNY_BANNERS.length)]
@@ -386,6 +406,7 @@ onBeforeUnmount(() => {
   unwatchPaymentRequests()
   unwatchMyAdminInvites()
   unwatchMyAdminProfile()
+  unwatchMembers()
   window.clearInterval(funnyBannerTimer)
   window.clearInterval(clickerTimer)
   window.clearInterval(clickerSaveTimer)
@@ -973,15 +994,20 @@ function withMemberAudit(member, existingMember = null) {
 
 async function auditAction(action, details = {}) {
   const actor = currentActor()
-  await createAuditLog({
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    action,
-    actorUid: actor.uid,
-    actorEmail: actor.email,
-    actorName: actor.name,
-    createdAt: new Date().toISOString(),
-    details
-  })
+  try {
+    await createAuditLog({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      action,
+      actorUid: actor.uid,
+      actorEmail: actor.email,
+      actorName: actor.name,
+      createdAt: new Date().toISOString(),
+      details
+    })
+  } catch (error) {
+    // O registro de auditoria não deve desfazer uma operação já persistida.
+    console.error('[PassCafe Remote Audit]', remoteErrorDetails(error))
+  }
 }
 
 function loadLocalSettings() {
@@ -1018,62 +1044,20 @@ function formatMoney(value) {
   return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function emv(id, value) {
-  const content = String(value ?? '')
-  return `${id}${content.length.toString().padStart(2, '0')}${content}`
-}
-
-function normalizePixText(value, maxLength) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^A-Za-z0-9 .,&-]/g, '')
-    .trim()
-    .toUpperCase()
-    .slice(0, maxLength)
-}
-
-function crc16(payload) {
-  let crc = 0xffff
-  for (let index = 0; index < payload.length; index += 1) {
-    crc ^= payload.charCodeAt(index) << 8
-    for (let bit = 0; bit < 8; bit += 1) {
-      crc = crc & 0x8000 ? (crc << 1) ^ 0x1021 : crc << 1
-      crc &= 0xffff
-    }
-  }
-  return crc.toString(16).toUpperCase().padStart(4, '0')
-}
-
-function buildPixPayload() {
-  const pixKey = settings.pixKey.trim()
-  const merchantName = normalizePixText(settings.pixOwner || 'CAFE PASS', 25) || 'CAFE PASS'
-  const merchantCity = 'FIRMA'
-  const amount = Number(settings.monthlyFee || 0).toFixed(2)
-  const description = normalizePixText(`Cafe Pass ${settings.month}`, 40)
-  const merchantAccount = emv('00', 'br.gov.bcb.pix') + emv('01', pixKey) + emv('02', description)
-  const additionalData = emv('05', 'CAFEPASS')
-
-  const payloadWithoutCrc = [
-    emv('00', '01'),
-    emv('26', merchantAccount),
-    emv('52', '0000'),
-    emv('53', '986'),
-    emv('54', amount),
-    emv('58', 'BR'),
-    emv('59', merchantName),
-    emv('60', merchantCity),
-    emv('62', additionalData),
-    '6304'
-  ].join('')
-
-  return `${payloadWithoutCrc}${crc16(payloadWithoutCrc)}`
-}
-
 async function persistMember(member, existingMember = null) {
-  Object.assign(member, withMemberAudit(member, existingMember))
-  saveLocalState()
-  await saveMember(member)
+  const persistedMember = withMemberAudit(member, existingMember)
+  await saveMember(persistedMember)
+  Object.assign(member, persistedMember)
+  return persistedMember
+}
+
+function upsertLocalMember(member) {
+  const index = members.value.findIndex((item) => item.id === member.id)
+  if (index === -1) {
+    members.value.push(member)
+    return
+  }
+  members.value[index] = member
 }
 
 async function requestPaymentApproval(member) {
@@ -1110,32 +1094,35 @@ async function handleUserPayment() {
   const dept = userPayment.dept.trim() || 'Geral'
   if (!name) return
 
-  let member = currentMember.value
-  const existingMember = member ? { ...member } : null
-  if (member) {
-    if (member.status === 'PAID') {
-      showToast(`${member.name} já está cafeinado oficialmente.`, 'info')
+  const current = currentMember.value
+  const existingMember = current ? { ...current } : null
+  if (current) {
+    if (current.status === 'PAID') {
+      showToast(`${current.name} já está cafeinado oficialmente.`, 'info')
       playBumpSound()
       return
     }
-    if (member.status === 'PENDING') {
-      showToast(`${member.name} já está na fila do fiscal do bule.`, 'info')
+    if (current.status === 'PENDING') {
+      showToast(`${current.name} já está na fila do fiscal do bule.`, 'info')
       playBumpSound()
       return
     }
-    member.status = 'PENDING'
-    member.paidAt = null
-    if (dept !== 'Geral') member.dept = dept
-  } else {
-    member = { id: currentUser.value.uid, name, dept, status: 'PENDING', paidAt: null }
-    members.value.push(member)
   }
 
-  await persistMember(member, existingMember)
-  await requestPaymentApproval(member)
-  showToast(`Pedido enviado para a brigada do café. Agora é perícia do Pix!`, 'success')
-  playMailSound()
-  userPayment.dept = ''
+  const member = current
+    ? { ...current, status: 'PENDING', paidAt: null, dept: dept !== 'Geral' ? dept : current.dept }
+    : { id: currentUser.value.uid, name, dept, status: 'PENDING', paidAt: null }
+
+  try {
+    await persistMember(member, existingMember)
+    await requestPaymentApproval(member)
+    upsertLocalMember(member)
+    showToast('Pedido enviado para a brigada do café. Agora é perícia do Pix!', 'success')
+    playMailSound()
+    userPayment.dept = ''
+  } catch (error) {
+    showPersistenceError('enviar o pagamento para conferência', error)
+  }
 }
 
 async function markAsPaidFromList(id) {
@@ -1147,18 +1134,22 @@ async function markAsPaidFromList(id) {
     playErrorSound()
     return
   }
-  const existingMember = { ...member }
   if (member.status === 'PENDING') {
     showToast(`${member.name} já está aguardando carimbo da brigada.`, 'info')
     playBumpSound()
     return
   }
-  member.status = 'PENDING'
-  member.paidAt = null
-  await persistMember(member, existingMember)
-  await requestPaymentApproval(member)
-  showToast(`${member.name} entrou na fila de conferência do Pix.`, 'success')
-  playMailSound()
+  const existingMember = { ...member }
+  const pendingMember = { ...member, status: 'PENDING', paidAt: null }
+  try {
+    await persistMember(pendingMember, existingMember)
+    await requestPaymentApproval(pendingMember)
+    upsertLocalMember(pendingMember)
+    showToast(`${pendingMember.name} entrou na fila de conferência do Pix.`, 'success')
+    playMailSound()
+  } catch (error) {
+    showPersistenceError('enviar o pagamento para conferência', error)
+  }
 }
 
 async function removeMember(id) {
@@ -1169,17 +1160,20 @@ async function removeMember(id) {
     playErrorSound()
     return
   }
-  if (adminUnlocked.value) await closePendingPaymentRequestsForMember(member)
-  members.value = members.value.filter((item) => item.id !== id)
-  saveLocalState()
-  await auditAction('MEMBER_REMOVED', {
-    memberId: id,
-    memberName: member?.name || null,
-    memberDept: member?.dept || null
-  })
-  await deleteFirestoreMember(id)
-  if (member) showToast(`Colega ${member.name} saiu da vaquinha deste mês.`, 'info')
-  playRemoveSound()
+  try {
+    if (adminUnlocked.value) await closePendingPaymentRequestsForMember(member)
+    await deleteFirestoreMember(id)
+    members.value = members.value.filter((item) => item.id !== id)
+    await auditAction('MEMBER_REMOVED', {
+      memberId: id,
+      memberName: member?.name || null,
+      memberDept: member?.dept || null
+    })
+    if (member) showToast(`Colega ${member.name} saiu da vaquinha deste mês.`, 'info')
+    playRemoveSound()
+  } catch (error) {
+    showPersistenceError('remover o participante', error)
+  }
 }
 
 async function closePendingPaymentRequestsForMember(member) {
@@ -1240,11 +1234,20 @@ function authErrorMessage(error) {
 }
 
 function adminFunctionError(error) {
-  const message = String(error?.message || '')
-    .replace(/^FirebaseError:\s*/i, '')
+  const message = sanitizeRemoteProviderText(error?.message || '')
+    .replace(/^Erro remoto:\s*/i, '')
     .replace(/^internal\s*/i, '')
     .trim()
   return message || 'Não foi possível concluir a operação administrativa.'
+}
+
+function showPersistenceError(action, error) {
+  console.error('[PassCafe Remote Persistence]', {
+    action,
+    error: remoteErrorDetails(error)
+  })
+  showToast(`Não foi possível ${action}. Tente novamente.`, 'error')
+  playErrorSound()
 }
 
 async function resolveAdminProfile(user) {
@@ -1536,86 +1539,94 @@ async function refreshPaymentRequests() {
 
 async function approvePaymentRequest(request) {
   const existingMember = members.value.find((item) => item.id === request.memberId)
-  const member = existingMember || {
+  const member = { ...(existingMember || {
     id: request.memberId,
     name: request.name,
     dept: request.dept || 'Geral',
     status: 'PENDING',
     paidAt: null
-  }
-  const wasNewMember = !members.value.some((item) => item.id === request.memberId)
+  }) }
 
   member.name = request.name
   member.dept = request.dept || 'Geral'
   member.status = 'PAID'
   member.paidAt = nowFormatted()
   approveMemberLevelPayment(member, existingMember)
-  if (wasNewMember) members.value.push(member)
+  const reviewedAt = new Date().toISOString()
+  const reviewedBy = adminReviewIdentity()
 
-  await persistMember(member, existingMember ? { ...existingMember } : null)
-  await updatePaymentRequest(request.id, {
-    ...request,
-    status: 'APPROVED',
-    reviewedAt: new Date().toISOString(),
-    reviewedBy: adminReviewIdentity()
-  })
-  paymentRequests.value = paymentRequests.value.map((item) => (
-    item.id === request.id
-      ? { ...item, status: 'APPROVED', reviewedAt: new Date().toISOString(), reviewedBy: adminReviewIdentity() }
-      : item
-  ))
-  await auditAction('PAYMENT_REQUEST_APPROVED', {
-    requestId: request.id,
-    memberId: request.memberId,
-    memberName: request.name
-  })
-  showToast(`${request.name} aprovado. Café liberado sem recurso ao RH.`, 'success')
-  playSuccessSound()
+  try {
+    await persistMember(member, existingMember ? { ...existingMember } : null)
+    await updatePaymentRequest(request.id, { ...request, status: 'APPROVED', reviewedAt, reviewedBy })
+    upsertLocalMember(member)
+    paymentRequests.value = paymentRequests.value.map((item) => (
+      item.id === request.id ? { ...item, status: 'APPROVED', reviewedAt, reviewedBy } : item
+    ))
+    await auditAction('PAYMENT_REQUEST_APPROVED', {
+      requestId: request.id,
+      memberId: request.memberId,
+      memberName: request.name
+    })
+    showToast(`${request.name} aprovado. Café liberado sem recurso ao RH.`, 'success')
+    playSuccessSound()
+  } catch (error) {
+    showPersistenceError('aprovar o pagamento', error)
+  }
 }
 
 async function rejectPaymentRequest(request) {
-  const member = members.value.find((item) => item.id === request.memberId)
-  if (member && member.status === 'PENDING') {
-    const existingMember = { ...member }
-    member.status = 'UNPAID'
-    member.paidAt = null
-    await persistMember(member, existingMember)
-  }
+  const currentMemberEntry = members.value.find((item) => item.id === request.memberId)
+  const member = currentMemberEntry?.status === 'PENDING'
+    ? { ...currentMemberEntry, status: 'UNPAID', paidAt: null }
+    : null
+  const reviewedAt = new Date().toISOString()
+  const reviewedBy = adminReviewIdentity()
 
-  await updatePaymentRequest(request.id, {
-    ...request,
-    status: 'REJECTED',
-    reviewedAt: new Date().toISOString(),
-    reviewedBy: adminReviewIdentity()
-  })
-  paymentRequests.value = paymentRequests.value.map((item) => (
-    item.id === request.id
-      ? { ...item, status: 'REJECTED', reviewedAt: new Date().toISOString(), reviewedBy: adminReviewIdentity() }
-      : item
-  ))
-  await auditAction('PAYMENT_REQUEST_REJECTED', {
-    requestId: request.id,
-    memberId: request.memberId,
-    memberName: request.name
-  })
-  showToast(`${request.name} recusado. O Pix não convenceu o conselho do coador.`, 'error')
-  playErrorSound()
+  try {
+    if (member) await persistMember(member, { ...currentMemberEntry })
+    await updatePaymentRequest(request.id, { ...request, status: 'REJECTED', reviewedAt, reviewedBy })
+    if (member) upsertLocalMember(member)
+    paymentRequests.value = paymentRequests.value.map((item) => (
+      item.id === request.id ? { ...item, status: 'REJECTED', reviewedAt, reviewedBy } : item
+    ))
+    await auditAction('PAYMENT_REQUEST_REJECTED', {
+      requestId: request.id,
+      memberId: request.memberId,
+      memberName: request.name
+    })
+    showToast(`${request.name} recusado. O Pix não convenceu o conselho do coador.`, 'error')
+    playErrorSound()
+  } catch (error) {
+    showPersistenceError('recusar o pagamento', error)
+  }
 }
 
 async function saveAdminSettings() {
   if (!requireAdmin()) return
-  Object.assign(settings, {
+  const nextSettings = {
     month: adminForm.month.trim(),
-    monthlyFee: Number(adminForm.monthlyFee) || 15,
+    monthlyFee: Number(adminForm.monthlyFee),
     pixType: adminForm.pixType,
     pixKey: adminForm.pixKey.trim(),
     pixOwner: adminForm.pixOwner.trim()
-  })
-  saveLocalState()
-  await saveSettings({ ...settings })
-  await auditAction('SETTINGS_UPDATED', { settings: { ...settings } })
-  showToast('Novas configurações salvas com sucesso!', 'success')
-  playSaveSound()
+  }
+  try {
+    nextSettings.pixKey = normalizePixKey(nextSettings.pixKey, nextSettings.pixType)
+    buildPixPayload(nextSettings)
+  } catch (error) {
+    showToast(error.message, 'error')
+    return
+  }
+  try {
+    await saveSettings(nextSettings)
+    Object.assign(settings, nextSettings)
+    saveLocalState()
+    await auditAction('SETTINGS_UPDATED', { settings: nextSettings })
+    showToast('Novas configurações salvas com sucesso!', 'success')
+    playSaveSound()
+  } catch (error) {
+    showPersistenceError('salvar as configurações', error)
+  }
 }
 
 async function addMemberFromAdmin() {
@@ -1623,17 +1634,21 @@ async function addMemberFromAdmin() {
   const name = adminNewMember.name.trim()
   if (!name) return
   const member = { id: Date.now().toString(), name, dept: adminNewMember.dept.trim() || 'Geral', status: 'UNPAID', paidAt: null }
-  members.value.push(member)
-  await persistMember(member)
-  await auditAction('MEMBER_ADDED_BY_ADMIN', {
-    memberId: member.id,
-    memberName: member.name,
-    memberDept: member.dept
-  })
-  adminNewMember.name = ''
-  adminNewMember.dept = ''
-  showToast(`${name} entrou na lista do café.`, 'success')
-  playJoinSound()
+  try {
+    await persistMember(member)
+    upsertLocalMember(member)
+    await auditAction('MEMBER_ADDED_BY_ADMIN', {
+      memberId: member.id,
+      memberName: member.name,
+      memberDept: member.dept
+    })
+    adminNewMember.name = ''
+    adminNewMember.dept = ''
+    showToast(`${name} entrou na lista do café.`, 'success')
+    playJoinSound()
+  } catch (error) {
+    showPersistenceError('adicionar o participante', error)
+  }
 }
 
 async function handleJoinSubmit() {
@@ -1647,22 +1662,26 @@ async function handleJoinSubmit() {
     return
   }
   const member = { id: currentUser.value.uid, name, dept: joinForm.dept.trim() || 'Geral', status: 'UNPAID', paidAt: null }
-  members.value.push(member)
-  await persistMember(member)
-  await auditAction('MEMBER_JOINED', {
-    memberId: member.id,
-    memberName: member.name,
-    memberDept: member.dept
-  })
-  joinForm.dept = ''
-  joinModalOpen.value = false
-  showToast('Entrada confirmada. Agora só falta pagar o café!', 'success')
-  playJoinSound()
+  try {
+    await persistMember(member)
+    upsertLocalMember(member)
+    await auditAction('MEMBER_JOINED', {
+      memberId: member.id,
+      memberName: member.name,
+      memberDept: member.dept
+    })
+    joinForm.dept = ''
+    joinModalOpen.value = false
+    showToast('Entrada confirmada. Agora só falta pagar o café!', 'success')
+    playJoinSound()
+  } catch (error) {
+    showPersistenceError('entrar na lista do mês', error)
+  }
 }
 
 async function resetMonthlyPayments() {
   if (!requireAdmin()) return
-  members.value = members.value.map((member) => {
+  const resetMembers = members.value.map((member) => {
     const migratedPaymentCount = member.status === 'PAID' && Number(member.paymentCount || 0) === 0
       ? 1
       : Number(member.paymentCount || 0)
@@ -1678,12 +1697,16 @@ async function resetMonthlyPayments() {
       lastProfilePaymentMonth: member.lastProfilePaymentMonth || (member.status === 'PAID' ? settings.month : null)
     }, member)
   })
-  saveLocalState()
-  await saveMembers(members.value)
-  await auditAction('MONTHLY_PAYMENTS_RESET', { memberCount: members.value.length })
-  selectedReceipt.value = null
-  showToast('Pagamentos reiniciados para o novo mês.', 'info')
-  playResetSound()
+  try {
+    await saveMembers(resetMembers)
+    members.value = resetMembers
+    await auditAction('MONTHLY_PAYMENTS_RESET', { memberCount: members.value.length })
+    selectedReceipt.value = null
+    showToast('Pagamentos reiniciados para o novo mês.', 'info')
+    playResetSound()
+  } catch (error) {
+    showPersistenceError('reiniciar os pagamentos do mês', error)
+  }
 }
 
 function copyPixKey() {
@@ -1712,7 +1735,7 @@ let toastSequence = 0
 function showToast(message, type = 'info', options = {}) {
   const id = `${Date.now()}-${toastSequence += 1}`
   const { achievement = null, duration = 3200 } = options
-  toasts.value.push({ id, message, type, achievement })
+  toasts.value.push({ id, message: sanitizeRemoteProviderText(message), type, achievement })
   setTimeout(() => {
     toasts.value = toasts.value.filter((toast) => toast.id !== id)
   }, duration)
@@ -2108,14 +2131,12 @@ function playPrintSound() { playSequence([[220, 0.035, 0], [220, 0.035, 0.05], [
             </div>
             <h2 class="text-xl font-black text-espresso mb-1">Chave Pix do Café</h2>
             <p class="text-xs text-mocha mb-4 font-medium">Escaneie o QR Code com valor ou copie a chave abaixo</p>
-            <div class="relative group my-2">
+            <div v-if="qrUrl" class="my-2">
               <div class="w-48 h-48 bg-white p-3 rounded-2xl comic-border shadow-comic flex items-center justify-center">
                 <img :src="qrUrl" alt="QR Code Pix Café" class="w-full h-full object-contain">
               </div>
-              <div class="absolute inset-0 bg-espresso/80 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity p-4 text-center">
-                <p class="text-foam text-xs font-bold">Faça a transferência no app do seu banco e informe seu nome ao lado!</p>
-              </div>
             </div>
+            <p v-else role="alert" class="text-xs text-chili font-bold">{{ pixResult.error }} Peça ao administrador para revisar a configuração do Pix.</p>
             <div class="monthly-fee mt-4 bg-roast text-foam px-4 py-2 rounded-xl comic-border w-full flex items-center justify-between">
               <span class="text-xs font-bold text-latte">Cota Mensal:</span>
               <span class="text-2xl font-black text-caramel font-mono">{{ formatMoney(settings.monthlyFee) }}</span>

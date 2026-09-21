@@ -141,7 +141,7 @@ export async function loadAdminManagement() {
 }
 
 export async function createAdminInvite(email, role, actorUid) {
-  if (!db) throw new Error('Firestore não configurado.')
+  if (!db) throw new Error('Acesso remoto não configurado.')
   const normalizedEmail = normalizeEmail(email)
   const [activeSnapshot, inviteSnapshot] = await Promise.all([
     getDocs(query(collection(db, 'adminDirectory'), where('email', '==', normalizedEmail))),
@@ -272,7 +272,23 @@ export async function loadClickerSave(userId, defaultSave) {
 
 export async function saveClickerSave(userId, save) {
   if (!db || !userId) return
-  await setDoc(doc(db, 'clickerSaves', userId), save, { merge: true })
+  // O payload do clicker sempre representa o save completo. Sobrescrever o
+  // documento tambem remove campos de versoes antigas que seriam rejeitados
+  // pela lista fechada de chaves das regras do Firestore.
+  await setDoc(doc(db, 'clickerSaves', userId), save)
+}
+
+export function watchMembers(callback, onError = () => {}) {
+  if (!db) {
+    callback([])
+    return () => {}
+  }
+
+  return onSnapshot(
+    query(collection(db, 'passcafeMembers'), orderBy('name')),
+    (snapshot) => callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+    onError
+  )
 }
 
 export function watchPaymentRequests(callback) {

@@ -126,17 +126,17 @@ service cloud.firestore {
         && isString(request.resource.data.dept)
         && request.resource.data.dept.size() <= 80
         && request.resource.data.status in ['PAID', 'UNPAID', 'PENDING']
-        && isOptionalString(request.resource.data.paidAt)
-        && isOptionalNonNegativeNumber(request.resource.data.paymentCount)
-        && isOptionalNonNegativeNumber(request.resource.data.totalContributed)
-        && isOptionalString(request.resource.data.lastProfilePaymentMonth)
-        && isOptionalString(request.resource.data.lastApprovedPaymentAt)
-        && isOptionalString(request.resource.data.createdByUid)
-        && isOptionalString(request.resource.data.createdByEmail)
-        && isOptionalString(request.resource.data.createdAt)
-        && isOptionalString(request.resource.data.updatedByUid)
-        && isOptionalString(request.resource.data.updatedByEmail)
-        && isOptionalString(request.resource.data.updatedAt);
+        && isOptionalString(request.resource.data.get('paidAt', null))
+        && isOptionalNonNegativeNumber(request.resource.data.get('paymentCount', null))
+        && isOptionalNonNegativeNumber(request.resource.data.get('totalContributed', null))
+        && isOptionalString(request.resource.data.get('lastProfilePaymentMonth', null))
+        && isOptionalString(request.resource.data.get('lastApprovedPaymentAt', null))
+        && isOptionalString(request.resource.data.get('createdByUid', null))
+        && isOptionalString(request.resource.data.get('createdByEmail', null))
+        && isOptionalString(request.resource.data.get('createdAt', null))
+        && isOptionalString(request.resource.data.get('updatedByUid', null))
+        && isOptionalString(request.resource.data.get('updatedByEmail', null))
+        && isOptionalString(request.resource.data.get('updatedAt', null));
     }
 
     function isPublicMemberWrite(memberId) {
@@ -147,10 +147,10 @@ service cloud.firestore {
         && (
           (!exists(/databases/$(database)/documents/passcafeMembers/$(memberId))
             && memberId == request.auth.uid
-            && request.resource.data.paymentCount == null
-            && request.resource.data.totalContributed == null
-            && request.resource.data.lastProfilePaymentMonth == null
-            && request.resource.data.lastApprovedPaymentAt == null)
+            && request.resource.data.get('paymentCount', null) == null
+            && request.resource.data.get('totalContributed', null) == null
+            && request.resource.data.get('lastProfilePaymentMonth', null) == null
+            && request.resource.data.get('lastApprovedPaymentAt', null) == null)
           || (exists(/databases/$(database)/documents/passcafeMembers/$(memberId))
             && (resource.data.get('createdByUid', null) == request.auth.uid || resource.data.get('createdByUid', null) == null)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dept', 'status', 'paidAt', 'createdByUid', 'createdByEmail', 'createdAt', 'updatedByUid', 'updatedByEmail', 'updatedAt']))
@@ -220,6 +220,8 @@ service cloud.firestore {
 
     function isValidClickerUpgrades() {
       return request.resource.data.upgrades is map
+        // Validar cada um dos 52 valores separadamente ultrapassa o limite de
+        // 1000 expressoes das regras. A lista fechada impede chaves arbitrarias.
         && request.resource.data.upgrades.keys().hasOnly([
           'grinder',
           'barista',
@@ -273,59 +275,7 @@ service cloud.firestore {
           'espresso-moon',
           'multiverse-gift',
           'eternity-blocks'
-        ])
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('grinder', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('barista', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('double', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('machine', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('thermal', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('delivery', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('legendary', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('franchise', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('tide-press', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('tropical-kiosk', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('volcanic-roast', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('aroma-plant', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('arabica-garden', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('barista-swarm', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('capsule-vault', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('franchise-hub', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('lost-bean-route', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('caffeinated-fleet', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('cloud-farm', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('roast-crystal', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('pharaoh-crown', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('espresso-transmitter', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('caffeine-battery', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('world-market', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('lunar-harvest', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('alchemic-board', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('order-server', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('barista-network', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('espresso-blade', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('thermal-shield', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('grinding-spell', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('cafezord-elixir', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('aroma-hourglass', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('quantum-clock', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('stellar-spark', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('bean-constellation', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('barista-eye', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('decaf-skull', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('galactic-trophy', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('supreme-target', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('coinfe-treasure', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('limitless-card', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('coffee-megacity', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('roast-tower', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('production-cloud', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('aromatic-database', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('extraction-loop', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('universal-sync', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('caffeine-sun', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('espresso-moon', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('multiverse-gift', null))
-        && isOptionalNonNegativeNumber(request.resource.data.upgrades.get('eternity-blocks', null));
+        ]);
     }
 
     function isValidClickerSave(userId) {
